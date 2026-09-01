@@ -1,0 +1,5 @@
+# Explicit order; `index.md` is a leaf (folds to /lessons/) so it's not listed
+# here as a page to sequence through - only the entries under it are.
+- lesson-1.md
+- lesson-2.md
+- lesson-3.md

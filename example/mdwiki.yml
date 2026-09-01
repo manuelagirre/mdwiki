@@ -1,0 +1,11 @@
+title: Example Wiki
+nav:
+  - label: Home
+    href: /
+  - label: Lessons
+    href: /lessons/
+backend_base: ""
+widgets:
+  - name: next-button
+    anchor: bottom
+    selector: "lessons/*"

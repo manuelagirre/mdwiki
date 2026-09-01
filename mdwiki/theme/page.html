@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · {{ site_title }}</title>
+  <link rel="stylesheet" href="/_assets/app.css">
+  {% if backend_base %}
+  <script>window.MDWIKI_BACKEND_BASE = {{ backend_base|tojson }};</script>
+  {% endif %}
+</head>
+<body>
+  <nav class="site-nav">
+    {% for link in nav %}
+    <a href="{{ link.href }}" class="{{ 'active' if request_path == link.href or (link.href != '/' and request_path.startswith(link.href)) else '' }}">{{ link.label }}</a>
+    {% endfor %}
+  </nav>
+  <main class="site-content">
+    {% if back_link %}
+    <p class="back-link"><a href="{{ back_link.href }}">&larr; {{ back_link.label }}</a></p>
+    {% endif %}
+    {{ content|safe }}
+  </main>
+</body>
+</html>
