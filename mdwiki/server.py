@@ -73,6 +73,7 @@ def create_app(
                 "back_link": page.back_link,
                 "nav": config.nav,
                 "backend_base": config.backend_base,
+                "has_mermaid": page.has_mermaid,
                 "request_path": request.url.path,
             },
         )
