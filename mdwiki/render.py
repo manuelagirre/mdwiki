@@ -14,12 +14,16 @@ import markdown
 import yaml
 
 from .config import SiteConfig
+from .link_rewrite import InternalLinkExtension
 from .ordering import adjacent
 from .widgets import widget_markup
 
 # `extra` bundles attr_list/def_list/fenced_code/footnotes/md_in_html/tables -
 # md_in_html is what widget host markup (raw <div> blocks) depends on.
-MD_EXTENSIONS = ["extra", "admonition", "sane_lists", "codehilite", "toc"]
+# InternalLinkExtension rewrites `.md`-suffixed relative links (the
+# GitHub-native convention wiki authors write) to the extension-less URLs
+# mdwiki actually serves - see link_rewrite.py.
+MD_EXTENSIONS = ["extra", "admonition", "sane_lists", "codehilite", "toc", InternalLinkExtension()]
 MD_EXTENSION_CONFIGS = {
     "codehilite": {"guess_lang": False},
     "toc": {"permalink": False},
@@ -108,9 +112,15 @@ class WikiRenderer:
     def resolve_url(self, url_path: str) -> str:
         """URL path (no leading slash; '' for root) -> the `.md` file
         relpath serving it. Tries `<path>.md` first, then `<path>/index.md`
-        (dir folding); 404s if neither exists."""
+        (dir folding); 404s if neither exists. At root, tries
+        `config.index_page` (if set) before falling back to plain
+        `index.md` - see SiteConfig.index_page."""
         url_path = url_path.strip("/")
-        candidates = [f"{url_path}.md", f"{url_path}/index.md"] if url_path else ["index.md"]
+        if url_path:
+            candidates = [f"{url_path}.md", f"{url_path}/index.md"]
+        else:
+            candidates = [self.config.index_page] if self.config.index_page else []
+            candidates.append("index.md")
         for relpath in candidates:
             path = self._safe_join(relpath)
             if path.is_file():

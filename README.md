@@ -33,10 +33,29 @@ files exist define the URLs that exist.
 Path-traversal attempts and missing pages both 404 identically (never a
 400 that would hint which case it was).
 
+### Cross-links between pages
+
+Write plain relative markdown links to sibling `.md` files - the same
+convention GitHub renders correctly when browsing the raw files:
+
+```markdown
+See [the loops lesson](../lessons/loops.md#exercises) for more.
+```
+
+At render time, mdwiki rewrites `.md`/`.../index.md` link targets to the
+extension-less URLs it actually serves (`../lessons/loops#exercises` above)
+- so the same source is correct both on GitHub and through `mdwiki serve`.
+Only `<a href>` targets are rewritten; external URLs (any `scheme://`),
+`mailto:`/`tel:` links, and pure `#fragment` links pass through untouched.
+Image `src` and other non-`.md` targets are never touched either - mdwiki
+has no static passthrough for the content root, so a relative link to
+something other than a `.md` file isn't served by mdwiki regardless.
+
 ## Site config (`mdwiki.yml`)
 
 ```yaml
 title: My Wiki
+index: Project-Overview.md   # optional - serve this file at `/` instead of requiring index.md
 nav:
   - label: Home
     href: /
@@ -50,8 +69,15 @@ widgets:                  # optional - auto-injected ("hook") widgets
     selector: "lessons/*"
 ```
 
-`nav`/`title`/`theme`/`backend_base` are all optional; an absent `mdwiki.yml`
-just gets you the default theme with no nav links.
+`nav`/`title`/`theme`/`backend_base`/`index` are all optional; an absent
+`mdwiki.yml` just gets you the default theme with no nav links, and `/`
+requires a literal `index.md` at the content root.
+
+**`index`** lets a content root without an `index.md` still serve something
+at `/` - useful when the homepage has a more descriptive name (e.g. a
+generated `Project-Overview.md`). Tried before the plain `index.md` fallback;
+if the named file is missing, resolution falls back to `index.md` exactly as
+if `index` had never been set.
 
 **A note on `top`/`bottom`/`both`:** these are anchors *inside the content
 region* - immediately before/after the rendered markdown, not the page shell
@@ -147,7 +173,11 @@ Reports, in one sweep: every `_order.yml` entry that doesn't resolve on
 disk; every file/dir present but unlisted in its directory's manifest (a
 heads-up, not an error - it'll append alphabetically until positioned);
 every `{{ widget: name }}` macro and hook `name` that doesn't resolve under
-`./widgets/` or the standard set.
+`./widgets/` or the standard set; every internal `<a href>` (post-rewrite,
+see "Cross-links between pages") that doesn't resolve to a real page; every
+`#fragment` link whose target page has no matching `id=`. The link/anchor
+checks render every page through the same `WikiRenderer` the live server
+uses, so they can't drift from what actually 404s at runtime.
 
 ## Writing a widget
 

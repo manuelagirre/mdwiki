@@ -1,5 +1,6 @@
 """mdwiki.yml site config: title, nav links, theme override, backend_base,
-and widget hook rows (auto-injected widgets). See README.md "Site config".
+index override, and widget hook rows (auto-injected widgets). See README.md
+"Site config".
 """
 from __future__ import annotations
 
@@ -40,6 +41,12 @@ class SiteConfig:
     theme_dir: Path | None = None
     backend_base: str = ""
     widget_hooks: list[WidgetHook] = field(default_factory=list)
+    index_page: str | None = None
+    """Relpath (e.g. "Project-Overview.md") of the file to serve at `/`,
+    instead of requiring a literal `index.md` at the content root. See
+    README.md "Site config" - `index:`. WikiRenderer tries this before
+    falling back to plain `index.md`, so an absent/missing override never
+    breaks the plain-`index.md` case."""
 
     @classmethod
     def load(cls, path: Path | None) -> "SiteConfig":
@@ -60,4 +67,5 @@ class SiteConfig:
             theme_dir=theme_dir,
             backend_base=raw.get("backend_base", ""),
             widget_hooks=hooks,
+            index_page=raw.get("index"),
         )
