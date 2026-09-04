@@ -242,6 +242,25 @@ immediately by name via either mechanism above:
 A host can shadow either by providing its own `./widgets/toast/` or
 `./widgets/next-button/` - your own copy is checked before the standard one.
 
+## Mermaid diagrams
+
+Plain ```` ```mermaid ```` fenced code blocks render as diagrams by default -
+no widget, no macro, just the fence:
+
+````markdown
+```mermaid
+sequenceDiagram
+  A->>B: hi
+```
+````
+
+Rendered via [mermaid.js](https://mermaid.js.org/) loaded from a pinned CDN
+version (`mermaid@11.17.2`), included only on pages that actually contain a
+diagram - not paid for on every page load. Any other fenced-code language
+(```` ```python ````, etc.) still goes through the normal `codehilite`
+syntax highlighting untouched; only the literal `mermaid` language tag is
+intercepted.
+
 ## Backend calls
 
 If your widgets need to call back to a host app's API (not just the wiki

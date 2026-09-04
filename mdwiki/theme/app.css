@@ -131,6 +131,16 @@ blockquote {
   display: block;
 }
 
+/* mermaid.js replaces this element's content with an SVG in place - just
+   needs to not blow out the page width on a wide diagram. */
+pre.mermaid {
+  overflow-x: auto;
+  text-align: center;
+  background: none;
+  border: none;
+  padding: 1em 0;
+}
+
 /* Pygments 'default' style, generated via:
    HtmlFormatter(style="default").get_style_defs(".codehilite") - matches the
    markdown "codehilite" extension enabled in render.py. */

@@ -15,6 +15,7 @@ import yaml
 
 from .config import SiteConfig
 from .link_rewrite import InternalLinkExtension
+from .mermaid import MermaidExtension
 from .ordering import adjacent
 from .widgets import widget_markup
 
@@ -22,8 +23,18 @@ from .widgets import widget_markup
 # md_in_html is what widget host markup (raw <div> blocks) depends on.
 # InternalLinkExtension rewrites `.md`-suffixed relative links (the
 # GitHub-native convention wiki authors write) to the extension-less URLs
-# mdwiki actually serves - see link_rewrite.py.
-MD_EXTENSIONS = ["extra", "admonition", "sane_lists", "codehilite", "toc", InternalLinkExtension()]
+# mdwiki actually serves - see link_rewrite.py. MermaidExtension must run
+# before "codehilite" claims ```mermaid fences as syntax-highlighted code -
+# see mermaid.py.
+MD_EXTENSIONS = [
+    "extra",
+    "admonition",
+    "sane_lists",
+    "codehilite",
+    "toc",
+    InternalLinkExtension(),
+    MermaidExtension(),
+]
 MD_EXTENSION_CONFIGS = {
     "codehilite": {"guess_lang": False},
     "toc": {"permalink": False},
@@ -95,6 +106,7 @@ class RenderedPage:
     title: str
     content_html: str
     back_link: dict[str, str] | None
+    has_mermaid: bool = False
 
 
 class WikiRenderer:
@@ -167,9 +179,15 @@ class WikiRenderer:
         excluded = set((frontmatter.get("widgets") or {}).get("exclude", []) or [])
 
         body_with_placeholders, macro_refs = _extract_macros(body)
-        content_html = markdown.markdown(
-            body_with_placeholders, extensions=MD_EXTENSIONS, extension_configs=MD_EXTENSION_CONFIGS
-        )
+        # A fresh Markdown() instance per call, not the markdown.markdown()
+        # convenience function - MermaidExtension stashes a flag on the
+        # instance (has this page got a diagram?) that we need to read back
+        # after conversion; markdown.markdown() discards its instance
+        # internally, and a shared/reused instance isn't safe across
+        # FastAPI's threadpooled sync request handlers.
+        md = markdown.Markdown(extensions=MD_EXTENSIONS, extension_configs=MD_EXTENSION_CONFIGS)
+        content_html = md.convert(body_with_placeholders)
+        has_mermaid = md.mdwiki_has_mermaid
 
         def _fill(m: re.Match) -> str:
             name, attrs = macro_refs[int(m.group(1))]
@@ -200,4 +218,4 @@ class WikiRenderer:
             bl = frontmatter["back_link"]
             back_link = {"href": bl.get("href", ""), "label": bl.get("label", "Back")}
 
-        return RenderedPage(title=title, content_html=full_html, back_link=back_link)
+        return RenderedPage(title=title, content_html=full_html, back_link=back_link, has_mermaid=has_mermaid)
