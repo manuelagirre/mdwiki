@@ -5,9 +5,11 @@ No database, no business-logic coupling. Install as a CLI or as a Python
 module.
 
 ```bash
-pip install -e .          # from this directory, until it's published
+pip install git+https://github.com/manuelagirre/mdwiki.git
 mdwiki serve --dir ./example --config ./example/mdwiki.yml --port 8000
 ```
+
+(Or `pip install -e .` from a local checkout for development.)
 
 Then open `http://localhost:8000/`. The `./example` directory in this repo
 is a small worked example - browse its files alongside this guide.

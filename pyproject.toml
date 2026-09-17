@@ -2,6 +2,11 @@
 name = "mdwiki"
 version = "0.1.0"
 description = "Point it at a directory of markdown files, get a served wiki. No DB, no business-logic coupling."
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Pavlo Horbach", email = "horbach.pavel@gmail.com" },
+]
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
@@ -12,11 +17,14 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
+[project.urls]
+Repository = "https://github.com/manuelagirre/mdwiki"
+
 [project.scripts]
 mdwiki = "mdwiki.cli:main"
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=69.5"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
