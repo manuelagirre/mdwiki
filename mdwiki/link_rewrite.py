@@ -6,9 +6,9 @@ cross-link correctly when browsed directly on GitHub), and this rewrites
 them to what mdwiki's own routing expects at render time. See render.py's
 `relpath_to_url` for the inverse (file relpath -> URL) this mirrors.
 
-Only touches `<a href>` - never image `src`, since mdwiki serves no static
-passthrough for the content root (see README "Routing"); an `<img>` pointing
-at a sibling file isn't served by mdwiki regardless of what this rewrites.
+Only touches `<a href>` - never image `src`. Non-`.md` content-root files
+(images, author-written `.html` pages, ...) are served raw at their literal
+path (see README "Routing"), so links to them already resolve unchanged.
 """
 from __future__ import annotations
 

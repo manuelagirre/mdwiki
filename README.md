@@ -33,6 +33,22 @@ files exist define the URLs that exist.
 Path-traversal attempts and missing pages both 404 identically (never a
 400 that would hint which case it was).
 
+### Plain HTML pages and other files
+
+Any other file under the content root is served raw, as authored, at its
+literal path: a hand-written `reports/q3.html` is served at
+`/reports/q3.html` in full - its own `<head>`, styles and scripts, with no
+mdwiki nav, theme, widgets or markdown processing - and an image beside a
+page (`lessons/diagram.png`) is served at `/lessons/diagram.png`. The
+content type is guessed from the file extension.
+
+A `.md` page always wins its URL: raw files are only consulted when no
+`<path>.md` or `<path>/index.md` matches. A few files are never served raw
+and 404 like a missing page: `.md` sources themselves (`/lessons/loops.md`
+is not a URL - use `/lessons/loops`), `_order.yml` manifests, and anything
+under a path segment starting with `.` (e.g. `.git/`, `.wiki-manifest.json`).
+Paths under `/_assets/` and `/_widgets/` are reserved for mdwiki itself.
+
 ### Cross-links between pages
 
 Write plain relative markdown links to sibling `.md` files - the same
@@ -47,9 +63,10 @@ extension-less URLs it actually serves (`../lessons/loops#exercises` above)
 - so the same source is correct both on GitHub and through `mdwiki serve`.
 Only `<a href>` targets are rewritten; external URLs (any `scheme://`),
 `mailto:`/`tel:` links, and pure `#fragment` links pass through untouched.
-Image `src` and other non-`.md` targets are never touched either - mdwiki
-has no static passthrough for the content root, so a relative link to
-something other than a `.md` file isn't served by mdwiki regardless.
+Image `src` and other non-`.md` targets are never touched either - those
+files are served raw at their literal path (see "Plain HTML pages and other
+files" above), so a relative link like `[report](q3.html)` or
+`![chart](chart.png)` already resolves as written.
 
 ## Site config (`mdwiki.yml`)
 
@@ -177,7 +194,9 @@ every `{{ widget: name }}` macro and hook `name` that doesn't resolve under
 see "Cross-links between pages") that doesn't resolve to a real page; every
 `#fragment` link whose target page has no matching `id=`. The link/anchor
 checks render every page through the same `WikiRenderer` the live server
-uses, so they can't drift from what actually 404s at runtime.
+uses, so they can't drift from what actually 404s at runtime. Links to
+author-written `.html` pages and other raw files count as resolving when
+the file exists, and the links inside `.html` pages are checked too.
 
 ## Writing a widget
 

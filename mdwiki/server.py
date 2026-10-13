@@ -84,7 +84,14 @@ def create_app(
 
     @app.get("/{url_path:path}")
     async def _page(request: Request, url_path: str):
-        return _render_response(request, url_path)
+        try:
+            return _render_response(request, url_path)
+        except PageNotFound:
+            # No `.md` page here - fall back to a content-root file served
+            # raw, as authored (e.g. a hand-written `.html` page or an image
+            # beside a page). Still a plain 404 if that misses too.
+            relpath = renderer.resolve_file(url_path)
+            return FileResponse(renderer.file_path(relpath))
 
     return app
 

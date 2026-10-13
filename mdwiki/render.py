@@ -92,8 +92,19 @@ def _extract_macros(body: str) -> tuple[str, list[tuple[str, dict[str, str]]]]:
     return _WIDGET_MACRO_RE.sub(_sub, body), refs
 
 
+# Never served raw by `WikiRenderer.resolve_file`: markdown source (served
+# rendered, via resolve_url), per-directory ordering manifests, and anything
+# under a dot-path (e.g. `.wiki-manifest.json`, `.git/`).
+_RAW_EXCLUDED_SUFFIXES = (".md",)
+_RAW_EXCLUDED_NAMES = ("_order.yml",)
+
+
 def relpath_to_url(relpath: str) -> str:
-    """`.md` file's path relative to root -> the URL that serves it."""
+    """Content file's path relative to root -> the URL that serves it. `.md`
+    pages lose their extension (and `index.md` folds to its directory); any
+    other file is served raw at its literal path."""
+    if not relpath.endswith(".md"):
+        return "/" + relpath
     if relpath == "index.md":
         return "/"
     if relpath.endswith("/index.md"):
@@ -138,6 +149,29 @@ class WikiRenderer:
             if path.is_file():
                 return relpath
         raise PageNotFound(url_path)
+
+    def resolve_file(self, url_path: str) -> str:
+        """URL path -> relpath of a content-root file served raw, as authored
+        (author-written `.html` pages, images, css, ...). Only consulted after
+        `resolve_url` misses, so a `.md` page always wins its URL. Excluded
+        files and anything escaping root raise `PageNotFound`, same 404 as a
+        missing page."""
+        relpath = url_path.strip("/")
+        parts = relpath.split("/")
+        if (
+            not relpath
+            or any(part.startswith(".") for part in parts)
+            or parts[-1] in _RAW_EXCLUDED_NAMES
+            or parts[-1].lower().endswith(_RAW_EXCLUDED_SUFFIXES)
+        ):
+            raise PageNotFound(url_path)
+        path = self._safe_join(relpath)
+        if not path.is_file():
+            raise PageNotFound(url_path)
+        return relpath
+
+    def file_path(self, relpath: str) -> Path:
+        return self._safe_join(relpath)
 
     def page_exists(self, url_path: str) -> bool:
         try:
