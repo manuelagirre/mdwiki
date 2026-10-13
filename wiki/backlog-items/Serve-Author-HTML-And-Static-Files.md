@@ -17,8 +17,8 @@
 | 6 | Implement + deploy | agent | done | 2026-10-13 | `4ace731`: render.py `resolve_file`/`file_path`/`relpath_to_url`, server.py `_page` fallback, validate.py HTML sweep + raw targets, README, link_rewrite docstring. No deploy process (library). System `/usr/local/lib/python3.11/dist-packages/mdwiki` is non-editable copy, NOT updated — needs user OK. |
 | 7 | Automated tests | agent | done | 2026-10-13 | `ba63926`: tests/test_static_files.py, 8 tests. Full suite 36 passed (pytest from scratch `--target` dir; repo has no pytest installed). |
 | 8 | E2E tests (if applicable) | agent | done | 2026-10-13 | No e2e tooling in repo. Live smoke: `python -m mdwiki serve` on scratch site, curl: `/r/page.html` 200 text/html byte-identical, `/r/a.svg` 200 image/svg+xml, `/index.md` 404, missing 404. No records created. |
-| 9 | Review the changes | user | pending | | |
-| 10 | Address requested changes | agent | pending | | |
+| 9 | Review the changes | user | done | 2026-10-13 | User: run code review via parallel agent, fix critical findings, then fold. No external doc. Review agent: 0 critical, 2 major (exclusion bypass via symlink / case / Windows segments), 8 minor. |
+| 10 | Address requested changes | agent | done | 2026-10-13 | `f50d2ad`: majors 1-2 fixed (exclusions on URL + resolved path, case-folded, unsafe segments rejected) + minor 8 (fallback only when no `.md` page). 39 tests pass. Not fixed (minor): forced `charset=utf-8` on text files, unreadable file 200 empty, non-UTF-8 html validate false positive, single-quoted attrs in validate regexes, percent-encoded links in validate, pre-existing 500s, `dir/` not serving `dir/index.html`. |
 | 11 | Roll out into wiki, retire the backlog item | agent | pending | | |
 | 12 | Publish external doc | agent | pending | | |
 
