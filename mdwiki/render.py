@@ -99,6 +99,22 @@ _RAW_EXCLUDED_SUFFIXES = (".md",)
 _RAW_EXCLUDED_NAMES = ("_order.yml",)
 
 
+def _raw_excluded(parts) -> bool:
+    name = parts[-1].lower()
+    return (
+        any(part.startswith(".") for part in parts)
+        or name in _RAW_EXCLUDED_NAMES
+        or name.endswith(_RAW_EXCLUDED_SUFFIXES)
+    )
+
+
+def _unsafe_segment(part: str) -> bool:
+    """Segments some filesystems reinterpret: backslash separators, drive /
+    stream colons (`x::$DATA`), and trailing dots or spaces that Windows
+    strips (`secret.md.` opens `secret.md`)."""
+    return "\\" in part or ":" in part or part != part.rstrip(". ")
+
+
 def relpath_to_url(relpath: str) -> str:
     """Content file's path relative to root -> the URL that serves it. `.md`
     pages lose their extension (and `index.md` folds to its directory); any
@@ -157,16 +173,15 @@ class WikiRenderer:
         files and anything escaping root raise `PageNotFound`, same 404 as a
         missing page."""
         relpath = url_path.strip("/")
-        parts = relpath.split("/")
-        if (
-            not relpath
-            or any(part.startswith(".") for part in parts)
-            or parts[-1] in _RAW_EXCLUDED_NAMES
-            or parts[-1].lower().endswith(_RAW_EXCLUDED_SUFFIXES)
-        ):
+        if not relpath or any(_unsafe_segment(part) for part in relpath.split("/")):
             raise PageNotFound(url_path)
         path = self._safe_join(relpath)
         if not path.is_file():
+            raise PageNotFound(url_path)
+        # Check exclusions against both the requested path and the file it
+        # actually resolves to, so a symlink (`notes.txt -> secret.md`) can't
+        # expose an excluded file under an innocent-looking name.
+        if _raw_excluded(relpath.split("/")) or _raw_excluded(path.relative_to(self.root).parts):
             raise PageNotFound(url_path)
         return relpath
 

@@ -97,3 +97,44 @@ def test_validate_checks_links_and_anchors_inside_html_pages(tmp_path):
     assert any("reports/bad.html" in i and "#nope" in i for i in issues)
     assert any("index.md" in i and "#missing" in i for i in issues)
     assert not any("#summary" in i for i in issues)
+
+
+def test_symlink_to_excluded_file_is_404(tmp_path):
+    root = _site(tmp_path)
+    (root / "secret.md").write_text("# Secret\n", encoding="utf-8")
+    (root / ".env").write_text("SECRET=1\n", encoding="utf-8")
+    (root / "notes.txt").symlink_to(root / "secret.md")
+    (root / "env.txt").symlink_to(root / ".env")
+    client = _client(root)
+    for path in ("/notes.txt", "/env.txt"):
+        res = client.get(path)
+        assert res.status_code == 404, path
+
+
+def test_symlink_escaping_root_is_404(tmp_path):
+    root = tmp_path / "content"
+    root.mkdir()
+    (tmp_path / "outside.html").write_text("<p>outside</p>", encoding="utf-8")
+    (root / "inside.html").symlink_to(tmp_path / "outside.html")
+    res = _client(root).get("/inside.html")
+    assert res.status_code == 404
+
+
+def test_exclusions_ignore_case_and_unsafe_segments(tmp_path):
+    root = _site(tmp_path)
+    (root / "reports" / "_ORDER.yml").write_text("[]\n", encoding="utf-8")
+    (root / "UPPER.MD").write_text("# Upper\n", encoding="utf-8")
+    (root / "sub" / ".git").mkdir(parents=True)
+    (root / "sub" / ".git" / "config").write_text("x", encoding="utf-8")
+    client = _client(root)
+    for path in (
+        "/reports/_ORDER.yml",
+        "/UPPER.MD",
+        "/sub/.git/config",
+        "/reports/q3.html.",
+        "/reports/q3.html%20",
+        "/x%5C..%5Creports%5Cq3.html",
+        "/reports/q3.html::$DATA",
+    ):
+        res = client.get(path)
+        assert res.status_code == 404, path
