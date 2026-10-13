@@ -92,8 +92,35 @@ def _extract_macros(body: str) -> tuple[str, list[tuple[str, dict[str, str]]]]:
     return _WIDGET_MACRO_RE.sub(_sub, body), refs
 
 
+# Never served raw by `WikiRenderer.resolve_file`: markdown source (served
+# rendered, via resolve_url), per-directory ordering manifests, and anything
+# under a dot-path (e.g. `.wiki-manifest.json`, `.git/`).
+_RAW_EXCLUDED_SUFFIXES = (".md",)
+_RAW_EXCLUDED_NAMES = ("_order.yml",)
+
+
+def _raw_excluded(parts) -> bool:
+    name = parts[-1].lower()
+    return (
+        any(part.startswith(".") for part in parts)
+        or name in _RAW_EXCLUDED_NAMES
+        or name.endswith(_RAW_EXCLUDED_SUFFIXES)
+    )
+
+
+def _unsafe_segment(part: str) -> bool:
+    """Segments some filesystems reinterpret: backslash separators, drive /
+    stream colons (`x::$DATA`), and trailing dots or spaces that Windows
+    strips (`secret.md.` opens `secret.md`)."""
+    return "\\" in part or ":" in part or part != part.rstrip(". ")
+
+
 def relpath_to_url(relpath: str) -> str:
-    """`.md` file's path relative to root -> the URL that serves it."""
+    """Content file's path relative to root -> the URL that serves it. `.md`
+    pages lose their extension (and `index.md` folds to its directory); any
+    other file is served raw at its literal path."""
+    if not relpath.endswith(".md"):
+        return "/" + relpath
     if relpath == "index.md":
         return "/"
     if relpath.endswith("/index.md"):
@@ -138,6 +165,28 @@ class WikiRenderer:
             if path.is_file():
                 return relpath
         raise PageNotFound(url_path)
+
+    def resolve_file(self, url_path: str) -> str:
+        """URL path -> relpath of a content-root file served raw, as authored
+        (author-written `.html` pages, images, css, ...). Only consulted after
+        `resolve_url` misses, so a `.md` page always wins its URL. Excluded
+        files and anything escaping root raise `PageNotFound`, same 404 as a
+        missing page."""
+        relpath = url_path.strip("/")
+        if not relpath or any(_unsafe_segment(part) for part in relpath.split("/")):
+            raise PageNotFound(url_path)
+        path = self._safe_join(relpath)
+        if not path.is_file():
+            raise PageNotFound(url_path)
+        # Check exclusions against both the requested path and the file it
+        # actually resolves to, so a symlink (`notes.txt -> secret.md`) can't
+        # expose an excluded file under an innocent-looking name.
+        if _raw_excluded(relpath.split("/")) or _raw_excluded(path.relative_to(self.root).parts):
+            raise PageNotFound(url_path)
+        return relpath
+
+    def file_path(self, relpath: str) -> Path:
+        return self._safe_join(relpath)
 
     def page_exists(self, url_path: str) -> bool:
         try:
