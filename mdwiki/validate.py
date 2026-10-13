@@ -12,7 +12,7 @@ from urllib.parse import urljoin, urlsplit
 
 from .config import SiteConfig
 from .ordering import ORDER_FILENAME, read_order_file
-from .render import WIDGET_MACRO_RE, WikiRenderer, relpath_to_url
+from .render import WIDGET_MACRO_RE, PageNotFound, WikiRenderer, relpath_to_url
 from .widgets import resolve_widget
 
 _HREF_RE = re.compile(r'<a\b[^>]*\bhref="([^"]*)"')
@@ -20,8 +20,28 @@ _ID_RE = re.compile(r'\bid="([^"]*)"')
 _EXTERNAL_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*:")
 
 
+_HTML_SUFFIXES = (".html", ".htm")
+
+
 def _all_md_files(root: Path) -> list[Path]:
     return sorted(p for p in root.rglob("*.md") if p.is_file())
+
+
+def _is_html(relpath: str) -> bool:
+    return relpath.lower().endswith(_HTML_SUFFIXES)
+
+
+def _all_page_files(root: Path) -> list[Path]:
+    """Every page whose links get checked: `.md` pages plus author-written
+    `.html` pages served raw (skipping dot-paths, which are never served)."""
+    html = [
+        p
+        for p in root.rglob("*")
+        if p.is_file()
+        and _is_html(p.name)
+        and not any(part.startswith(".") for part in p.relative_to(root).parts)
+    ]
+    return sorted(_all_md_files(root) + html)
 
 
 def validate(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[str]:
@@ -81,22 +101,40 @@ def _check_links(root: Path, config: SiteConfig, widgets_dir: Path | None) -> li
     issues: list[str] = []
     ids_cache: dict[str, set[str] | None] = {}  # relpath -> ids, or None if page 404s
 
+    def _page_html(relpath: str) -> str:
+        """Final HTML a browser receives: `.md` pages rendered, author-written
+        `.html` pages read as-is (they're served raw, never rendered)."""
+        if _is_html(relpath):
+            return renderer.file_path(relpath).read_text(encoding="utf-8")
+        return renderer.render_relpath(relpath).content_html
+
     def _ids_for(relpath: str) -> set[str] | None:
         if relpath not in ids_cache:
             try:
-                html = renderer.render_relpath(relpath).content_html
+                html = _page_html(relpath)
             except Exception:
                 ids_cache[relpath] = None
             else:
                 ids_cache[relpath] = set(_ID_RE.findall(html))
         return ids_cache[relpath]
 
-    for md_path in _all_md_files(root):
-        relpath = str(md_path.relative_to(root)).replace("\\", "/")
+    def _resolve_target(url: str) -> tuple[str | None, bool]:
+        """(relpath whose ids an `#anchor` is checked against, or None for a
+        raw non-HTML file; whether the URL resolves at all)."""
+        if renderer.page_exists(url):
+            return renderer.resolve_url(url), True
+        try:
+            relpath = renderer.resolve_file(url)
+        except PageNotFound:
+            return None, False
+        return (relpath if _is_html(relpath) else None), True
+
+    for page_path in _all_page_files(root):
+        relpath = str(page_path.relative_to(root)).replace("\\", "/")
         rel = Path(relpath)
         current_url = relpath_to_url(relpath)
         try:
-            html = renderer.render_relpath(relpath).content_html
+            html = _page_html(relpath)
         except Exception as exc:
             issues.append(f"{rel}: failed to render ({exc})")
             continue
@@ -110,12 +148,12 @@ def _check_links(root: Path, config: SiteConfig, widgets_dir: Path | None) -> li
             target_url = parsed.path or current_url
             fragment = parsed.fragment or None
 
-            if not renderer.page_exists(target_url):
+            target_relpath, resolves = _resolve_target(target_url)
+            if not resolves:
                 issues.append(f"{rel}: link to {href!r} does not resolve (resolved path {target_url!r})")
                 continue
 
-            if fragment:
-                target_relpath = renderer.resolve_url(target_url)
+            if fragment and target_relpath is not None:
                 target_ids = _ids_for(target_relpath)
                 if target_ids is not None and fragment not in target_ids:
                     issues.append(

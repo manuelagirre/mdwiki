@@ -1,0 +1,35 @@
+title: "mdwiki Wiki"
+
+# Project-Overview.md is served as the site index via `index:` - mdwiki
+# only folds a literal index.md to `/` by default; this lets the wiki keep
+# the more descriptive filename instead of renaming it to index.md.
+index: Project-Overview.md
+
+# Flat top links only - mdwiki's nav has no nesting/sections (unlike
+# mkdocs-material's sidebar). Individual feature pages are deliberately
+# not listed here; Feature-Index.md is their directory, same as before.
+nav:
+  - label: Project Overview
+    href: /
+  - label: Backlog
+    href: /Backlog
+  - label: Feature Index
+    href: /Feature-Index
+  - label: Python Server
+    href: /domains/Python-Server
+  - label: Browser Client
+    href: /domains/Browser-Client
+
+# Auto-injects the create-backlog-item widget at the bottom of Backlog.md via
+# mdwiki's own widget-hook mechanism (mdwiki/config.py's widget_hooks,
+# applied in render.py) -- no {{ widget: ... }} markup needed inside the page
+# itself. The widget's own files ship with this wiki harness namespace
+# (claude-harness/wiki/widgets/create-backlog-item/) and are merged into
+# every project by docker/scripts/user-entrypoint.sh's mdwiki launch, so this
+# hook works out of the box without the project committing any widget code
+# of its own. A project can still shadow it with its own version via
+# `widgets_dir:` (see that entrypoint script's comment on the merge).
+widgets:
+  - name: create-backlog-item
+    anchor: bottom
+    selector: Backlog.md
