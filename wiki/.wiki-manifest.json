@@ -1,15 +1,37 @@
 {
-  "wikiVersion": 1,
+  "wikiVersion": 2,
   "generatedAt": "2026-10-13",
-  "generatedFromCommit": "6bb6d9f6bad0c86ef38064f1840c83422cfeba3b",
+  "generatedFromCommit": "6f6c18c7f6a50fd035d7d92529b9e94478ada588",
   "generatedFromBranch": "serve-plain-html",
-  "generator": "/wiki-init",
+  "generator": "/wiki-sync",
   "domains": [
-    { "name": "Python Server", "features": 10, "categories": 4, "page": "domains/Python-Server.md" },
-    { "name": "Browser Client", "features": 4, "categories": 3, "page": "domains/Browser-Client.md" }
+    {
+      "name": "Python Server",
+      "features": 10,
+      "categories": 4,
+      "page": "domains/Python-Server.md"
+    },
+    {
+      "name": "Browser Client",
+      "features": 4,
+      "categories": 3,
+      "page": "domains/Browser-Client.md"
+    }
   ],
-  "totals": { "features": 10, "categories": 4, "sharedComponents": 4, "legacyFiles": 0 },
-  "sourceGlobs": ["mdwiki/**/*.py", "mdwiki/theme/*", "mdwiki/static/*", "mdwiki/widgets/**/*", "pyproject.toml", "tests/**/*.py"],
+  "totals": {
+    "features": 10,
+    "categories": 4,
+    "sharedComponents": 4,
+    "legacyFiles": 0
+  },
+  "sourceGlobs": [
+    "mdwiki/**/*.py",
+    "mdwiki/theme/*",
+    "mdwiki/static/*",
+    "mdwiki/widgets/**/*",
+    "pyproject.toml",
+    "tests/**/*.py"
+  ],
   "featureSchemaVersion": 3,
   "notes": "generatedFromCommit is the anchor for /wiki-sync. Do not hand-edit."
 }

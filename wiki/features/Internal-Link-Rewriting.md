@@ -105,9 +105,9 @@ sequenceDiagram
 
 Tests: Covered (unit level only, `rewrite_internal_href` called directly, not through render) — tests/test_link_rewrite.py::test_pure_fragment_link_untouched, tests/test_link_rewrite.py::test_external_scheme_untouched, tests/test_link_rewrite.py::test_mailto_untouched, tests/test_link_rewrite.py::test_empty_href_untouched
 
-### UC4: Non-Markdown Href -> Unchanged -> Dead Link
+### UC4: Non-Markdown Href -> Unchanged -> Raw File URL
 
-Author writes `[Page](page.html)` or `[Asset](../screenshots/foo.png)`. `rewrite_internal_href` hits final `return href` branch. Href reaches browser unchanged. Route `resolve_url` only tries `<path>.md` and `<path>/index.md`, so `page.html` 404s at click time.
+Author writes `[Page](page.html)` or `[Asset](../screenshots/foo.png)`. `rewrite_internal_href` hits final `return href` branch. Href reaches browser unchanged. Click lands on literal path; [Page Routing](Page-Routing.md) serves existing content-root file raw (`WikiRenderer.resolve_file`), 404 only if missing or excluded.
 
 ```mermaid
 sequenceDiagram
@@ -123,11 +123,9 @@ sequenceDiagram
     end
     _LinkRewriteTreeprocessor.run-->>WikiRenderer.render_relpath: tree with href unchanged
     WikiRenderer.render_relpath-->>Browser: HTML href page.html
-    Browser->>WikiRenderer.render_relpath: GET page.html (later click)
-    WikiRenderer.render_relpath-->>Browser: 404
 ```
 
-Tests: Uncovered — passthrough branch unit-tested (tests/test_link_rewrite.py::test_non_md_target_untouched uses `.png`), but no automated test renders a `.html` link through to a 404 or asserts `validate` reports it.
+Tests: Covered — tests/test_link_rewrite.py::test_non_md_target_untouched (passthrough, `.png`), tests/test_static_files.py::test_validate_accepts_links_to_html_and_static_files (rendered `reports/q3.html#summary` link from `index.md` passes through and resolves).
 
 ### UC5: Validate Run -> Rewritten Href Checked for Dangling Link
 
@@ -171,16 +169,15 @@ Tests: Covered — tests/test_render.py::test_validate_catches_dangling_link_and
 
 - [Markdown Rendering](Markdown-Rendering.md) -> Internal Link Rewriting: runtime call. `WikiRenderer.render_relpath` builds `markdown.Markdown` with `MD_EXTENSIONS`, which includes `InternalLinkExtension()`.
 - Internal Link Rewriting -> [Page Routing](Page-Routing.md): data-model sharing. Shape: extension-less URL path string as written into `<a href>`. Forms: `lesson-2`, `lesson-2#fragment`, `dir/` (trailing slash), `./` (root). Must match `WikiRenderer.resolve_url` candidates `<path>.md`, then `<path>/index.md`. Inverse mapping is `relpath_to_url` in `mdwiki/render.py`.
-- [Site Validation](Site-Validation.md) -> Internal Link Rewriting: data-model sharing. Shape: post-rewrite `<a href>` string value, extracted by `_HREF_RE` in `mdwiki/validate.py` and checked by `_check_links` via `page_exists`.
+- [Site Validation](Site-Validation.md) -> Internal Link Rewriting: data-model sharing. Shape: post-rewrite `<a href>` string value, extracted by `_HREF_RE` in `mdwiki/validate.py` and checked by `_check_links` via `page_exists`, then `resolve_file` for raw content files.
 
 ## Fragility Points
 
 - Case-sensitive suffix match: `rewrite_internal_href` tests `endswith(".md")`. `X.MD` returned unchanged (probed: `[d](X.MD)` -> `href="X.MD"`).
-- Only `a` elements rewritten: `_LinkRewriteTreeprocessor.run` walks `root.iter("a")`. `<img src="img/a.md">` untouched (probed). By design per module docstring: no static passthrough serves sibling files, so no route would serve a rewritten image anyway.
-- Non-`.md` targets pass through: final `return href` branch. `page.html` untouched; `resolve_url` has no `.html` candidate, so route 404s.
+- Only `a` elements rewritten: `_LinkRewriteTreeprocessor.run` walks `root.iter("a")`. `<img src="img/a.md">` untouched (probed). By design per module docstring: non-`.md` files served raw at literal path, so image `src` needs no rewrite.
 - Raw HTML links not rewritten: only parsed Markdown `a` elements seen (see Non-Obvious Solutions).
 - Scheme regex duplicated: `_EXTERNAL_SCHEME_RE` defined identically in `mdwiki/link_rewrite.py` and `mdwiki/validate.py`. Drift changes what rewrite skips versus what validate skips.
 
 ## Fragility Note
 
-Readers get dead links, not errors, when an unrewritten link (`.MD`, `.html`, raw HTML `.md`) reaches the browser: the href is literal, so the click 404s. Quiet for readers. `_check_links` checks each rendered href through `page_exists`, so `mdwiki validate` reports these as "does not resolve" issues. Loud only if someone runs validate. Whoever clicks the link notices first. The duplicated scheme regex fails silently: validate and rewrite could disagree on external-link detection with no error raised.
+Readers get dead links, not errors, when an unrewritten `.md`-style link (`.MD`, raw HTML `.md`) reaches the browser: href literal, and raw serving excludes `.md`, so click 404s. `.html`/asset links resolve when file exists. Quiet for readers. `_check_links` checks each rendered href through `page_exists`/`resolve_file`, so `mdwiki validate` reports these as "does not resolve" issues. Loud only if someone runs validate. Whoever clicks the link notices first. The duplicated scheme regex fails silently: validate and rewrite could disagree on external-link detection with no error raised.

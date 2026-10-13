@@ -11,7 +11,7 @@ FastAPI app factory. Wraps rendered page HTML in one Jinja shell (`page.html`), 
 | `_templates_for` | Returns `Jinja2Templates` for a theme dir. Cached per dir. | mdwiki/server.py |
 | `_TEMPLATES_CACHE` | Module-level `dict[Path, Jinja2Templates]`. Keyed by theme dir. | mdwiki/server.py |
 | `_index` | `GET /` handler. Calls `_render_response(request, "")`. | mdwiki/server.py |
-| `_page` | `GET /{url_path:path}` catch-all. Calls `_render_response(request, url_path)`. | mdwiki/server.py |
+| `_page` | `GET /{url_path:path}` catch-all. If `page_exists(url_path)`: `_render_response`. Else raw branch: `resolve_file(url_path)` -> `file_path(relpath)` -> `FileResponse`, bypassing `page.html`. | mdwiki/server.py |
 | `_render_response` | Calls `WikiRenderer.render_url`, builds Jinja context dict, returns `TemplateResponse` for `page.html`. Sets `request_path` from `request.url.path`. | mdwiki/server.py |
 | `_not_found` | `PageNotFound` exception handler. Plain text `Not found`, 404. | mdwiki/server.py |
 | `_assets` | `GET /_assets/{asset_path:path}`. Searches theme dir, then `STATIC_DIR`. Path guard via `is_relative_to` after `.resolve()`. Else `HTTPException` 404. | mdwiki/server.py |
@@ -27,14 +27,14 @@ FastAPI app factory. Wraps rendered page HTML in one Jinja shell (`page.html`), 
 | `mdwiki/__main__.py` | `python -m mdwiki` entry. Calls `main`. | mdwiki/__main__.py |
 | `pyproject.toml` | `[project.scripts] mdwiki = "mdwiki.cli:main"`. `package-data` includes `theme/*`, `static/*`, `widgets/**/*`. | pyproject.toml |
 | `SiteConfig` | Called here via `SiteConfig.load(config_path)`. Owned by Site Configuration Loading. | mdwiki/config.py |
-| `WikiRenderer` | Called here via `render_url(url_path)`. Returns `RenderedPage` (title, content_html, back_link, has_mermaid). Owned by Page Routing and Markdown Rendering. | mdwiki/render.py |
+| `WikiRenderer` | Called here via `page_exists`, `render_url(url_path)`, `resolve_file(url_path)`, `file_path(relpath)`. `render_url` returns `RenderedPage` (title, content_html, back_link, has_mermaid). Owned by Page Routing and Markdown Rendering. | mdwiki/render.py |
 | `resolve_widget` | Called here by `_widget_assets`. Returns widget dir or None. Owned by Widget Injection. | mdwiki/widgets.py |
 
 ## Process Flow
 
 Page request:
 
-1. `_index` (`/`) or `_page` (`/{url_path}`) calls `_render_response`.
+1. `_index` (`/`) calls `_render_response`. `_page` (`/{url_path}`) checks `renderer.page_exists(url_path)`: true -> `_render_response`; false -> raw branch (step 7).
 2. `_render_response` calls `WikiRenderer.render_url(url_path)`. Returns `RenderedPage`, or raises `PageNotFound`.
 3. `_render_response` builds context dict: `site_title`, `title`, `content`, `back_link`, `nav`, `backend_base`, `has_mermaid`, `request_path`.
 4. `TemplateResponse` renders `page.html` from templates for `theme_dir`.
@@ -45,7 +45,8 @@ Page request:
    - Nav links. Class `active` when `request_path == link.href`, or `link.href != '/'` and `request_path` starts with `link.href`.
    - Back link only if `back_link` set.
    - `content|safe` body.
-6. `PageNotFound` anywhere in steps 1-2 goes to `_not_found` -> 404 text.
+6. `PageNotFound` anywhere in steps 1-2 or 7 goes to `_not_found` -> 404 text.
+7. Raw branch (`page_exists` false): `resolve_file(url_path)` returns content-root relpath, or raises `PageNotFound` (miss or excluded). `file_path(relpath)` -> `FileResponse`. File served as authored: no `page.html`, no Jinja context. Content-type guessed from extension.
 
 Asset request:
 
@@ -78,6 +79,7 @@ Startup:
 
 - 200 `text/html` shell from `page.html` (`_render_response`).
 - 404 `text/plain` `Not found` (`_not_found`).
+- Raw `FileResponse` for content-root file not a `.md` page, e.g. author `.html` in full or image (`_page` raw branch). Content-type guessed from extension; Starlette adds `charset=utf-8` for `text/*`.
 - File response from theme dir or `STATIC_DIR` (`_assets`).
 - 404 JSON `{"detail": "asset not found"}` (`_assets`).
 - File response for widget asset (`_widget_assets`).
@@ -119,6 +121,8 @@ sequenceDiagram
     participant WikiRenderer
     participant PageHtml as "page.html"
     Browser->>_page: GET lessons/lesson-1
+    _page->>WikiRenderer: page_exists with url path
+    WikiRenderer-->>_page: true
     _page->>_render_response: request and url path
     _render_response->>WikiRenderer: render_url with url path
     WikiRenderer-->>_render_response: RenderedPage with has_mermaid flag
@@ -136,17 +140,18 @@ Browser `GET` unknown path. `WikiRenderer.render_url` raises `PageNotFound`. Pro
 sequenceDiagram
     actor Browser
     participant _page
-    participant _render_response
     participant WikiRenderer
     participant _not_found
     Browser->>_page: GET nope/does-not-exist
-    _page->>_render_response: url path
-    _render_response->>WikiRenderer: render_url with url path
-    WikiRenderer-->>_render_response: PageNotFound raised
-    _render_response-->>_page: PageNotFound propagates
+    _page->>WikiRenderer: page_exists with url path
+    WikiRenderer-->>_page: false
+    _page->>WikiRenderer: resolve_file with url path
+    WikiRenderer-->>_page: PageNotFound raised
     _page-->>_not_found: PageNotFound handled
     _not_found-->>Browser: 404 Not found text
 ```
+
+Raw content-root file (no `.md` page) served by same route: see [Page Routing](Page-Routing.md). Not repeated here. Only the shell-side effect matters: no `page.html` render.
 
 **Tests:** Covered — `tests/test_render.py::test_missing_page_is_404`
 
@@ -290,7 +295,7 @@ sequenceDiagram
 
 ## Dependencies
 
-- [Page Routing](Page-Routing.md): runtime call. `_index`/`_page` delegate to `_render_response` -> `WikiRenderer.render_url` for URL -> content relpath and 404 (`PageNotFound`).
+- [Page Routing](Page-Routing.md): runtime call. `_index`/`_page` delegate to `_render_response` -> `WikiRenderer.render_url` for URL -> content relpath and 404 (`PageNotFound`). `_page` also calls `page_exists`, then `resolve_file` + `file_path` for raw content-root file fallback.
 - [Markdown Rendering](Markdown-Rendering.md): runtime call. `render_url` returns `RenderedPage` (`title`, `content_html`, `back_link`, `has_mermaid`).
 - [Site Configuration Loading](Site-Configuration-Loading.md): runtime call. `create_app` calls `SiteConfig.load(config_path)`.
 - [Widget Injection](Widget-Injection.md): runtime call. `_widget_assets` uses `resolve_widget`.
@@ -302,6 +307,7 @@ sequenceDiagram
 This feature spans Python Server (server.py, cli.py) and Browser Client (page.html, app.css, widget JS). Artifacts the two sides share:
 
 - Jinja context keys set in `_render_response` `context={...}` and read in `mdwiki/theme/page.html`: `site_title`, `title`, `content`, `back_link` (`href`, `label`), `nav` (items with `.label`, `.href`), `backend_base`, `has_mermaid`, `request_path`. Renaming one on either side: Jinja default `Undefined` renders empty, no error. `has_mermaid` missing -> diagrams stay raw text. `nav` missing -> nav empty.
+- Raw content-root files served by `_page` (`FileResponse`, e.g. author `.html`, images) never reach `page.html`. No Jinja keys involved on that path; the keys above stay unchanged.
 - Global `window.MDWIKI_BACKEND_BASE` (set in `page.html` when `backend_base` non-empty). Documented in README "Backend calls" as read by host widgets. No shipped widget reads it (grep of `mdwiki/widgets` and `mdwiki/static`: zero hits). Misspelled read in a host widget -> silent `undefined`.
 - Served URLs: `/_assets/app.css` (page.html), `/_assets/shadow-helper.js` (widget imports), `/_widgets/{name}/widget.js` (`mdwiki/widgets.py` line 42 emits `<script src>`).
 - CSS class strings: `site-nav`, `active`, `site-content`, `back-link` (page.html and app.css), `mdwiki-widget` (`mdwiki/widgets.py` line 41 host div, styled in app.css). Renamed in one place -> layout or active state silently lost.

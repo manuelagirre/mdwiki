@@ -39,7 +39,7 @@ Full list: [Feature Index](Feature-Index.md).
 
 ## Status quo
 
-- Request: `GET /<path>` resolves to `<path>.md` or `<path>/index.md` under content root. Only `.md` content served; no static passthrough for content root (images, `.html` 404).
+- Request: `GET /<path>` resolves to `<path>.md` or `<path>/index.md` under content root. No `.md` match: existing content-root file served raw at literal path (author `.html` in full, no page shell; images, css). `.md` sources, `_order.yml`, dot-paths never served raw.
 - Render: frontmatter, Python-Markdown with fixed extensions, `.md` link rewrite, mermaid fences, widget macros + config hooks, wrapped in theme `page.html`.
 - Assets: `/_assets/*` (theme dir then `mdwiki/static/`), `/_widgets/<name>/*` (host widgets dir then standard set).
 - Authoring tools: `mdwiki validate`, `mdwiki order`.

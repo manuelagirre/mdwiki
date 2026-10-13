@@ -24,6 +24,7 @@ tests/
   test_link_rewrite.py
   test_mermaid.py
   test_render.py
+  test_static_files.py
 ```
 
 ## How to run
