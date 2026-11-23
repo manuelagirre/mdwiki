@@ -465,3 +465,8 @@ def test_responses_are_gzipped_when_the_client_accepts_it():
     assert "site-nav" in res.text  # httpx decodes transparently
     res = client.get("/_assets/app.css", headers={"Accept-Encoding": "identity"})
     assert "content-encoding" not in res.headers
+
+
+def test_placeholder_shaped_author_text_does_not_crash(tmp_path):
+    page = _render(tmp_path, "# T\n\nMDWIKIWIDGETPLACEHOLDER7ENDMDWIKIWIDGETPLACEHOLDER\n")
+    assert "MDWIKIWIDGETPLACEHOLDER7" in page.content_html

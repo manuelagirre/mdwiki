@@ -201,7 +201,11 @@ _LITERAL_REGION_RE = re.compile(r'<code\b[^>]*>.*?</code>|<pre class="mermaid">.
 
 def _restore_literal_macros(html_text: str, refs: list[_MacroRef]) -> str:
     def _restore(m: re.Match) -> str:
-        return _PLACEHOLDER_RE.sub(lambda p: escape(refs[int(p.group(1))].source, quote=False), m.group(0))
+        def _source(p: re.Match) -> str:
+            idx = int(p.group(1))
+            return escape(refs[idx].source, quote=False) if idx < len(refs) else p.group(0)
+
+        return _PLACEHOLDER_RE.sub(_source, m.group(0))
 
     return _LITERAL_REGION_RE.sub(_restore, html_text)
 
@@ -472,7 +476,10 @@ class WikiRenderer:
         live_widgets: list[str] = []
 
         def _fill(m: re.Match) -> str:
-            ref = macro_refs[int(m.group(1))]
+            idx = int(m.group(1))
+            if idx >= len(macro_refs):  # placeholder-shaped text the author typed
+                return m.group(0)
+            ref = macro_refs[idx]
             live_widgets.append(ref.name)
             return widget_markup(ref.name, ref.attrs, self.widgets_dir)
 
