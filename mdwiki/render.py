@@ -10,7 +10,7 @@ import html
 import re
 from dataclasses import dataclass, field
 from html import escape
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 
 import markdown
@@ -140,6 +140,11 @@ def _page_title(frontmatter: dict, body: str, relpath: str, toc_tokens: list[dic
     return _humanize(stem)
 
 
+def _posix_dir(path: PurePosixPath) -> str:
+    """Root-relative directory as a relpath string, '' for the root."""
+    return "" if str(path) == "." else str(path)
+
+
 def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
@@ -222,6 +227,9 @@ class RenderedPage:
     content_html: str
     back_link: dict[str, str] | None
     has_mermaid: bool = False
+    breadcrumbs: list[dict[str, str]] = field(default_factory=list)
+    """Links to the page's ancestor folders, root first (`href`/`label`);
+    empty for top-level pages and pages with an explicit `back_link`."""
     macro_widgets: list[str] = field(default_factory=list)
     """Names of the `{{ widget: ... }}` macros actually expanded on this page
     (not ones shown literally inside code), in order of appearance."""
@@ -321,6 +329,21 @@ class WikiRenderer:
             return rel
         return None
 
+    def breadcrumbs(self, dir_relpath: str) -> list[dict[str, str]]:
+        """Crumbs for something living in directory `dir_relpath` ('' =
+        root): the root, then each folder down to and including it. Every
+        folder URL resolves - to its index.md or a generated listing."""
+        if not dir_relpath:
+            return []
+        crumbs = [{"href": "/", "label": self.config.title}]
+        parts = dir_relpath.split("/")
+        for depth in range(1, len(parts) + 1):
+            rel = "/".join(parts[:depth])
+            index = f"{rel}/index.md"
+            label = self._title_for(index) if self._safe_join(index).is_file() else _humanize(parts[depth - 1])
+            crumbs.append({"href": quote(f"/{rel}/"), "label": label})
+        return crumbs
+
     def render_listing(self, dir_relpath: str) -> RenderedPage:
         """A generated index for a directory without its own `index.md`:
         its pages and page-holding subdirectories, in `_order.yml` order,
@@ -347,7 +370,12 @@ class WikiRenderer:
             f'<h1 id="{escape(_slug(title))}">{escape(title, quote=False)}</h1>\n'
             f'<ul class="mdwiki-listing">\n{body}\n</ul>'
         )
-        return RenderedPage(title=title, content_html=content_html, back_link=None)
+        return RenderedPage(
+            title=title,
+            content_html=content_html,
+            back_link=None,
+            breadcrumbs=self.breadcrumbs(_posix_dir(PurePosixPath(dir_relpath).parent)) if dir_relpath else [],
+        )
 
     def _read(self, relpath: str) -> tuple[dict, str]:
         path = self._safe_join(relpath)
@@ -445,10 +473,18 @@ class WikiRenderer:
             bl = frontmatter["back_link"]
             back_link = {"href": bl.get("href", ""), "label": bl.get("label", "Back")}
 
+        # The folder the page sits in; a dir/index.md *is* that folder's
+        # page, so its crumbs stop at the parent.
+        folder = PurePosixPath(relpath).parent
+        if PurePosixPath(relpath).name == "index.md":
+            folder = folder.parent
+        crumbs = [] if back_link else self.breadcrumbs(_posix_dir(folder))
+
         return RenderedPage(
             title=title,
             content_html=full_html,
             back_link=back_link,
             has_mermaid=has_mermaid,
+            breadcrumbs=crumbs,
             macro_widgets=live_widgets,
         )

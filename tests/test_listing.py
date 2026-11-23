@@ -67,3 +67,33 @@ def test_index_override_is_served_at_root_not_redirected(tmp_path):
     res = TestClient(create_app(content_dir=tmp_path, config_path=cfg)).get("/", follow_redirects=False)
     assert res.status_code == 200
     assert "Overview" in res.text
+
+
+def test_breadcrumbs_for_nested_pages_and_listings(tmp_path):
+    from mdwiki.render import WikiRenderer
+
+    _write(tmp_path, {
+        "index.md": "# Home\n",
+        "top.md": "# Top\n",
+        "guides/index.md": "# All Guides\n",
+        "guides/setup.md": "# Setup\n",
+        "guides/deep-dives/caching.md": "# Caching\n",
+        "guides/deep-dives/more/x.md": "# X\n",
+        "lessons/one.md": "---\nback_link: {href: /, label: Home}\n---\n# One\n",
+    })
+    r = WikiRenderer(tmp_path, SiteConfig(title="My Wiki"), None)
+    crumbs = lambda rel: [(c["href"], c["label"]) for c in r.render_relpath(rel).breadcrumbs]
+
+    assert crumbs("top.md") == []
+    assert crumbs("guides/index.md") == []  # a top-level folder's own page
+    assert crumbs("guides/setup.md") == [("/", "My Wiki"), ("/guides/", "All Guides")]
+    assert crumbs("guides/deep-dives/caching.md") == [
+        ("/", "My Wiki"), ("/guides/", "All Guides"), ("/guides/deep-dives/", "Deep Dives"),
+    ]
+    assert crumbs("lessons/one.md") == []  # explicit back_link wins
+    # a generated listing gets crumbs to its parent folders
+    listing = r.render_listing("guides/deep-dives/more")
+    assert [c["href"] for c in listing.breadcrumbs] == ["/", "/guides/", "/guides/deep-dives/"]
+
+    html = TestClient(create_app(content_dir=tmp_path)).get("/guides/setup").text
+    assert '<nav class="breadcrumbs" aria-label="Breadcrumb">' in html

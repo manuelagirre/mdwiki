@@ -130,6 +130,7 @@ def create_app(
         content: str,
         *,
         back_link: dict[str, str] | None = None,
+        breadcrumbs: list[dict[str, str]] | None = None,
         has_mermaid: bool = False,
         status_code: int = 200,
     ):
@@ -142,6 +143,7 @@ def create_app(
                 "title": title,
                 "content": content,
                 "back_link": back_link,
+                "breadcrumbs": breadcrumbs or [],
                 "nav": config.nav,
                 "backend_base": config.backend_base,
                 "has_mermaid": has_mermaid,
@@ -162,6 +164,7 @@ def create_app(
             page.title,
             page.content_html,
             back_link=page.back_link,
+            breadcrumbs=page.breadcrumbs,
             has_mermaid=page.has_mermaid,
         )
 
@@ -211,7 +214,7 @@ def create_app(
             if "/" + url_path != canonical:
                 return _redirect_to(request, canonical)
             page = renderer.render_listing(dir_relpath)
-            return _shell_response(request, page.title, page.content_html)
+            return _shell_response(request, page.title, page.content_html, breadcrumbs=page.breadcrumbs)
         # No page here - fall back to a content-root file served raw, as
         # authored (e.g. a hand-written `.html` page or an image beside a
         # page). Still a plain 404 if that misses too.

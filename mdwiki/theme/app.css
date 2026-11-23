@@ -429,3 +429,18 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 .headerlink:focus {
   opacity: 1;
 }
+
+/* Breadcrumbs: links to the folders above a nested page. */
+.breadcrumbs {
+  font-size: 0.9em;
+  color: var(--mdwiki-muted);
+  margin: 0 0 0.5em;
+}
+
+.breadcrumbs a {
+  text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+  text-decoration: underline;
+}

@@ -186,7 +186,8 @@ widgets:
 - `title` (optional): overrides the page's `<title>`/heading. Default falls
   back to the file's own `# H1`, then the filename, humanized.
 - `back_link` (optional `href` + `label`): rendered as a plain `<a>` in the
-  page shell. This is core-rendered, not a widget - static markup from data
+  page shell, in place of the automatic breadcrumbs (`Wiki › Guides ›`)
+  that nested pages otherwise get. This is core-rendered, not a widget - static markup from data
   you supplied, no JS/data-fetch involved.
 - `widgets.exclude` (optional list of names): skips specific hook-injected
   widgets on this page, even though their `selector` would otherwise match.
