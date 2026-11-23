@@ -376,3 +376,27 @@ def test_cached_titles_follow_edits_on_disk(tmp_path):
     st = page.stat()
     os.utime(page, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000))  # coarse-mtime filesystems
     assert renderer.page_source("p.md")[0] == "After Edit"
+
+
+def test_watch_mode_injects_reload_script_and_token_tracks_edits(tmp_path):
+    import os
+
+    page = tmp_path / "index.md"
+    page.write_text("# Home\n", encoding="utf-8")
+    client = TestClient(create_app(content_dir=tmp_path, watch=True))
+    assert 'fetch("/_watch"' in client.get("/").text
+    before = client.get("/_watch").text
+
+    page.write_text("# Home, edited\n", encoding="utf-8")
+    st = page.stat()
+    os.utime(page, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000_000))
+    assert client.get("/_watch").text != before
+    (tmp_path / "new.md").write_text("# New\n", encoding="utf-8")
+    assert client.get("/_watch").text != before
+
+
+def test_watch_mode_is_off_by_default(tmp_path):
+    (tmp_path / "index.md").write_text("# Home\n", encoding="utf-8")
+    client = TestClient(create_app(content_dir=tmp_path))
+    assert "/_watch" not in client.get("/").text
+    assert client.get("/_watch").status_code == 404

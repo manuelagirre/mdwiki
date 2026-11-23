@@ -38,5 +38,19 @@
     {% endif %}
     {{ content|safe }}
   </main>
+  {% if watch_token %}
+  <script>
+    // mdwiki serve --watch: reload when a content or theme file changes.
+    (() => {
+      const token = {{ watch_token|tojson }};
+      setInterval(async () => {
+        try {
+          const res = await fetch("/_watch", {cache: "no-store"});
+          if (res.ok && (await res.text()) !== token) location.reload();
+        } catch (e) { /* server restarting - try again next tick */ }
+      }, 1000);
+    })();
+  </script>
+  {% endif %}
 </body>
 </html>

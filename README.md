@@ -11,7 +11,9 @@ mdwiki serve --dir ./example --config ./example/mdwiki.yml --port 8000
 
 (Or `pip install -e .` from a local checkout for development.)
 
-Then open `http://localhost:8000/`. The `./example` directory in this repo
+Then open `http://localhost:8000/`. While writing, add `--watch` and open
+pages reload themselves whenever a content or theme file changes (edits to
+`mdwiki.yml` itself still need a restart). The `./example` directory in this repo
 is a small worked example - browse its files alongside this guide.
 
 Programmatic usage, instead of the CLI:
@@ -83,8 +85,8 @@ and 404 like a missing page: `.md` sources themselves (`/lessons/loops.md`
 is not a URL - use `/lessons/loops`), `_order.yml` manifests, the site's own
 `mdwiki.yml` (if it lives inside the content root), and anything
 under a path segment starting with `.` (e.g. `.git/`, `.wiki-manifest.json`).
-Paths under `/_assets/` and `/_widgets/`, and `/_search`, are reserved for
-mdwiki itself.
+Paths under `/_assets/` and `/_widgets/`, plus `/_search` and `/_watch`, are
+reserved for mdwiki itself.
 
 ### Cross-links between pages
 

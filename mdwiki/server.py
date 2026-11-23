@@ -43,15 +43,36 @@ def _templates_for(search_path: tuple[Path, ...]):
     return _TEMPLATES_CACHE[search_path]
 
 
+def _change_token(roots: tuple[Path, ...]) -> str:
+    """Cheap fingerprint of the files under `roots` (dot-paths skipped):
+    changes whenever a file is added, removed or modified. Polled by pages
+    served with `--watch`."""
+    newest, count = 0, 0
+    for root in roots:
+        for path in root.rglob("*"):
+            if any(part.startswith(".") for part in path.relative_to(root).parts):
+                continue
+            try:
+                stat = path.stat()
+            except OSError:  # vanished mid-walk
+                continue
+            newest = max(newest, stat.st_mtime_ns)
+            count += 1
+    return f"{newest}-{count}"
+
+
 def create_app(
     content_dir: Path,
     config_path: Path | None = None,
     widgets_dir: Path | None = None,
     *,
     search_enabled: bool = True,
+    watch: bool = False,
 ) -> FastAPI:
     """`search_enabled=False` hides the nav search box - for `mdwiki build`,
-    whose static output has no server behind `/_search`."""
+    whose static output has no server behind `/_search`. `watch=True` makes
+    every page reload itself when a content or theme file changes (see
+    `_change_token`) - an authoring aid for `mdwiki serve --watch`."""
     content_dir = Path(content_dir).resolve()
     config = SiteConfig.load(config_path)
     for warning in config.warnings:
@@ -124,6 +145,7 @@ def create_app(
                 "backend_base": config.backend_base,
                 "has_mermaid": has_mermaid,
                 "search_enabled": search_enabled,
+                "watch_token": _change_token(watched_roots) if watch else None,
                 "request_path": request.url.path,
                 # The content root's own favicon.ico if it has one (served
                 # raw like any other file), else a small built-in icon -
@@ -147,6 +169,14 @@ def create_app(
         if request.url.query:
             location += "?" + request.url.query
         return RedirectResponse(location, status_code=308)
+
+    watched_roots = (content_dir, *theme_path, *([effective_widgets_dir] if effective_widgets_dir else []))
+
+    if watch:
+
+        @app.get("/_watch")
+        def _watch():
+            return PlainTextResponse(_change_token(watched_roots), headers={"Cache-Control": "no-store"})
 
     @app.api_route("/_search", methods=["GET", "HEAD"])
     def _search(request: Request, q: str = ""):
@@ -196,6 +226,7 @@ def serve(
     config: str | Path | None = None,
     widgets: str | Path | None = None,
     host: str = "127.0.0.1",
+    watch: bool = False,
 ) -> None:
     """Launch the wiki server. Same function the CLI's `mdwiki serve` and
     Python-module usage (`from mdwiki import serve`) both call."""
@@ -203,5 +234,6 @@ def serve(
         content_dir=Path(dir),
         config_path=Path(config) if config else None,
         widgets_dir=Path(widgets) if widgets else None,
+        watch=watch,
     )
     uvicorn.run(app, host=host, port=port)

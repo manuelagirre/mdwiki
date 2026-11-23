@@ -13,7 +13,7 @@ from .validate import validate
 
 
 def _cmd_serve(args: argparse.Namespace) -> int:
-    serve(dir=args.dir, port=args.port, config=args.config, widgets=args.widgets, host=args.host)
+    serve(dir=args.dir, port=args.port, config=args.config, widgets=args.widgets, host=args.host, watch=args.watch)
     return 0
 
 
@@ -73,6 +73,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--config", default=None, help="Path to mdwiki.yml (site config).")
     p_serve.add_argument("--widgets", default=None, help="Host-supplied widgets directory.")
+    p_serve.add_argument(
+        "--watch",
+        action="store_true",
+        help="Reload open pages in the browser when a content or theme file changes (for authoring).",
+    )
     p_serve.set_defaults(func=_cmd_serve)
 
     p_validate = sub.add_parser("validate", help="Pre-flight check: _order.yml entries, widget references.")
