@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.parse import unquote, urljoin, urlsplit
 
 from .config import SiteConfig
-from .ordering import ORDER_FILENAME, orderable_names, read_order_file
+from .ordering import ORDER_FILENAME, Page, orderable_names, read_order_file
 from .render import PageNotFound, RenderedPage, WikiRenderer, frontmatter_problems, relpath_to_url
 from .widgets import resolve_widget
 
@@ -51,6 +51,12 @@ class _CachingRenderer(WikiRenderer):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._rendered: dict[str, RenderedPage] = {}
+        self._pages: list[Page] | None = None  # one tree walk per run
+
+    def _pages_in_order(self) -> list[Page]:
+        if self._pages is None:
+            self._pages = super()._pages_in_order()
+        return self._pages
 
     def render_relpath(self, relpath: str) -> RenderedPage:
         if relpath not in self._rendered:

@@ -19,7 +19,7 @@ import yaml
 from .config import SiteConfig
 from .link_rewrite import InternalLinkExtension
 from .mermaid import MermaidExtension
-from .ordering import adjacent, has_pages, ordered_entries
+from .ordering import Page, adjacent, has_pages, ordered_entries, selector_matches, walk
 from .widgets import widget_markup
 
 # `extra` bundles attr_list/def_list/fenced_code/footnotes/md_in_html/tables -
@@ -349,13 +349,19 @@ class WikiRenderer:
         frontmatter, body = self._read(relpath)
         return _page_title(frontmatter, body, relpath)
 
+    def _pages_in_order(self) -> list[Page]:
+        """The global page order. Walked fresh on every call, so the live
+        server always reflects the files on disk; a renderer working on a
+        fixed snapshot (validate) can override this to walk once."""
+        return walk(self.root)
+
     def _hook_attrs(self, hook_name: str, selector: str, relpath: str) -> dict[str, str] | None:
         """Params to pass a hook-injected widget. `next-button` needs
         core-computed "what page is next" from the ordering manifest; other
         hook widgets get no extra params beyond what mdwiki.yml declares
         (none, currently - extend here as new hook widgets need params)."""
         if hook_name == "next-button":
-            target = adjacent(self.root, relpath, selector, direction=1)
+            target = adjacent(self.root, relpath, selector, direction=1, pages=self._pages_in_order())
             if target is None:
                 return None  # nothing to render - last page in the sequence
             return {"href": relpath_to_url(target.relpath), "label": self._title_for(target.relpath)}
@@ -397,7 +403,7 @@ class WikiRenderer:
         for hook in self.config.widget_hooks:
             if hook.name in excluded:
                 continue
-            if not Path(relpath).match(hook.selector):
+            if not selector_matches(relpath, hook.selector):
                 continue
             attrs = self._hook_attrs(hook.name, hook.selector, relpath)
             if attrs is None:

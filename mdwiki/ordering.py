@@ -10,7 +10,8 @@ otherwise it's a transparent grouping node the walk descends into.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
+from functools import lru_cache
+from pathlib import Path, PurePosixPath
 
 import yaml
 
@@ -102,13 +103,30 @@ def walk(root: Path) -> list[Page]:
     return pages
 
 
-def adjacent(root: Path, current_relpath: str, selector: str, *, direction: int) -> Page | None:
+@lru_cache(maxsize=65536)
+def selector_matches(relpath: str, selector: str) -> bool:
+    """Whether a hook `selector` glob matches a page relpath (`*` stays
+    within one path segment - PurePosixPath.match semantics). Memoized:
+    every next/prev lookup filters the whole page list, so validate on a
+    large wiki would otherwise repeat the same matches ~pages² times."""
+    return PurePosixPath(relpath).match(selector)
+
+
+def adjacent(
+    root: Path,
+    current_relpath: str,
+    selector: str,
+    *,
+    direction: int,
+    pages: list[Page] | None = None,
+) -> Page | None:
     """next(page) (direction=+1) / prev(page) (direction=-1): the adjacent
     leaf in the global DFS order, filtered down to pages matching `selector`
     (a glob against the leaf's relpath; `*` does not cross `/`, matching
-    PurePosixPath.match semantics)."""
-    all_pages = walk(root)
-    matching = [p for p in all_pages if Path(p.relpath).match(selector)]
+    PurePosixPath.match semantics). Pass `pages` (a `walk(root)` result) to
+    reuse one walk across many lookups."""
+    all_pages = walk(root) if pages is None else pages
+    matching = [p for p in all_pages if selector_matches(p.relpath, selector)]
     relpaths = [p.relpath for p in matching]
     try:
         idx = relpaths.index(current_relpath)
