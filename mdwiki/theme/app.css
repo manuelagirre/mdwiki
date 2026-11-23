@@ -262,7 +262,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 
 /* Dark counterpart of the Pygments block above, generated via
    HtmlFormatter(style="github-dark").get_style_defs(".codehilite"). */
-@media (prefers-color-scheme: dark) {
+@media screen and (prefers-color-scheme: dark) {
   .codehilite .hll { background-color: #6e7681 }
   .codehilite { background: #0d1117; color: #E6EDF3 }
   .codehilite .c { color: #8B949E; font-style: italic } /* Comment */
@@ -443,4 +443,45 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 
 .breadcrumbs a:hover {
   text-decoration: underline;
+}
+
+/* Printing: just the page content, in black on white - no nav, search,
+   breadcrumbs or hover permalinks, and code blocks wrap instead of being
+   cut off at the page edge. */
+@media print {
+  .site-nav,
+  .breadcrumbs,
+  .back-link,
+  .headerlink {
+    display: none;
+  }
+
+  /* Paper is white even for readers in dark mode: back to the light
+     palette (the dark Pygments block only applies on screen). */
+  :root {
+    color-scheme: light;
+    --mdwiki-bg: #ffffff;
+    --mdwiki-text: #000000;
+    --mdwiki-muted: #666666;
+    --mdwiki-border: #e0e0e0;
+    --mdwiki-accent: #1565c0;
+    --mdwiki-code-bg: #f2f2f2;
+    --mdwiki-note-bg: #f5f9ff;
+    --mdwiki-warn: #e65100;
+    --mdwiki-warn-bg: #fff8f0;
+  }
+
+  .site-content {
+    max-width: none;
+    padding: 0;
+  }
+
+  pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  h1, h2, h3, h4 {
+    break-after: avoid;
+  }
 }
