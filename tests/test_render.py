@@ -324,3 +324,16 @@ def test_validate_checks_nav_index_and_back_links(tmp_path):
         "mdwiki.yml: index 'Missing.md' does not exist (falling back to index.md at /)",
         "docs/page.md (back_link): link to '../nowhere' does not resolve (resolved path '/nowhere')",
     ])
+
+
+def test_validate_decodes_percent_encoded_links(tmp_path):
+    (tmp_path / "index.md").write_text(
+        "# Home\n\n[a](My%20Page.md#sec-two) [b](<My Page.md>) [c](caf%C3%A9.md) [d](My%20Page.md#nope)\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "My Page.md").write_text("# My Page\n\n## Sec two\n", encoding="utf-8")
+    (tmp_path / "café.md").write_text("# Cafe\n", encoding="utf-8")
+    issues = validate(tmp_path, SiteConfig(), None)
+    assert issues == [
+        "index.md: link to 'My%20Page#nope' points at anchor #nope which doesn't exist on My Page.md"
+    ]

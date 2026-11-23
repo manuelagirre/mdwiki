@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import unquote, urljoin, urlsplit
 
 from .config import SiteConfig
 from .ordering import ORDER_FILENAME, orderable_names, read_order_file
@@ -158,7 +158,9 @@ def _check_links(root: Path, renderer: WikiRenderer) -> list[str]:
             return
         resolved = urljoin(base_url, href)
         parsed = urlsplit(resolved)
-        target_url = parsed.path or base_url
+        # Decode like the server does: `My%20Page.md` / `caf%C3%A9.md` (the
+        # GitHub-safe spellings) name files with literal spaces/non-ASCII.
+        target_url = unquote(parsed.path) if parsed.path else base_url
         fragment = parsed.fragment or None
 
         target_relpath, resolves = _resolve_target(target_url)
