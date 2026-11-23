@@ -72,9 +72,28 @@ class _CachingRenderer(WikiRenderer):
 
 
 def validate(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[str]:
-    """Returns a list of human-readable issue strings; empty means clean."""
+    """Returns a list of human-readable issue strings (errors and
+    warnings alike); empty means clean."""
+    return [text for text, _ in _collect(root, config, widgets_dir)]
+
+
+def validate_report(root: Path, config: SiteConfig, widgets_dir: Path | None) -> tuple[list[str], list[str]]:
+    """(errors, warnings). Warnings are heads-ups that don't break anything
+    a reader sees - a page not yet positioned in its folder's _order.yml,
+    an unknown (ignored) mdwiki.yml key; `mdwiki validate` only fails on
+    them with --strict."""
+    collected = _collect(root, config, widgets_dir)
+    return [t for t, w in collected if not w], [t for t, w in collected if w]
+
+
+def _collect(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[tuple[str, bool]]:
+    """Every issue in report order, as (text, is_warning)."""
     root = root.resolve()
-    issues: list[str] = list(config.warnings)
+    warnings: set[int] = set()
+    issues: list[str] = []
+    for warning in config.warnings:
+        warnings.add(len(issues))
+        issues.append(warning)
 
     # --- _order.yml entries -------------------------------------------------
     for dir_path in [root] + [p for p in root.rglob("*") if p.is_dir() and not _in_dot_path(root, p)]:
@@ -99,6 +118,7 @@ def validate(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[s
         # own leaf entry, folded in by whichever level lists this directory,
         # not a page this directory's own manifest sequences (see ordering.walk).
         for name in sorted(on_disk - set(listed) - {"index.md"}):
+            warnings.add(len(issues))
             issues.append(
                 f"{rel_dir / ORDER_FILENAME}: {name!r} is present but unlisted "
                 "(will append alphabetically until positioned)"
@@ -130,7 +150,7 @@ def validate(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[s
 
     issues.extend(_check_links(root, renderer))
 
-    return issues
+    return [(text, i in warnings) for i, text in enumerate(issues)]
 
 
 def _check_links(root: Path, renderer: WikiRenderer) -> list[str]:

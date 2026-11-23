@@ -294,7 +294,7 @@ mdwiki validate --dir ./wiki --config ./mdwiki.yml
 
 Reports, in one sweep: every `_order.yml` entry that doesn't resolve on
 disk; every file/dir present but unlisted in its directory's manifest (a
-heads-up, not an error - it'll append alphabetically until positioned);
+warning, not an error - it'll append alphabetically until positioned);
 every `{{ widget: name }}` macro and hook `name` that doesn't resolve under
 `./widgets/` or the standard set; every page whose frontmatter is invalid
 YAML or has a field of the wrong shape (the live server ignores such a
@@ -308,6 +308,11 @@ checks render every page through the same `WikiRenderer` the live server
 uses, so they can't drift from what actually 404s at runtime. Links to
 author-written `.html` pages and other raw files count as resolving when
 the file exists, and the links inside `.html` pages are checked too.
+
+Errors exit with status 1. Warnings - pages not yet positioned in their
+folder's `_order.yml`, and unknown (ignored) keys in `mdwiki.yml` - are
+listed but don't fail the run, so adding a page doesn't break CI; pass
+`--strict` to fail on those too.
 
 ## Writing a widget
 

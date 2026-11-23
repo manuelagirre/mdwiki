@@ -9,7 +9,7 @@ from .build import BuildError, build
 from .config import ConfigError, SiteConfig
 from .ordering import OrderError, append, insert_after, insert_before, remove
 from .server import serve
-from .validate import validate
+from .validate import validate_report
 
 
 def _cmd_serve(args: argparse.Namespace) -> int:
@@ -20,14 +20,19 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 def _cmd_validate(args: argparse.Namespace) -> int:
     config = SiteConfig.load(Path(args.config) if args.config else None)
     widgets_dir = Path(args.widgets).resolve() if args.widgets else config.widgets_dir
-    issues = validate(Path(args.dir), config, widgets_dir)
-    if not issues:
+    errors, warnings = validate_report(Path(args.dir), config, widgets_dir)
+    if not errors and not warnings:
         print("mdwiki validate: clean, no issues found.")
         return 0
-    print(f"mdwiki validate: {len(issues)} issue(s):")
-    for issue in issues:
-        print(f"  - {issue}")
-    return 1
+    if errors:
+        print(f"mdwiki validate: {len(errors)} error(s):")
+        for issue in errors:
+            print(f"  - {issue}")
+    if warnings:
+        print(f"mdwiki validate: {len(warnings)} warning(s){' (failing: --strict)' if args.strict else ''}:")
+        for issue in warnings:
+            print(f"  - {issue}")
+    return 1 if errors or (warnings and args.strict) else 0
 
 
 def _cmd_build(args: argparse.Namespace) -> int:
@@ -84,6 +89,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_validate.add_argument("--dir", required=True)
     p_validate.add_argument("--config", default=None)
     p_validate.add_argument("--widgets", default=None)
+    p_validate.add_argument(
+        "--strict",
+        action="store_true",
+        help="Also fail on warnings (pages not positioned in _order.yml, unknown mdwiki.yml keys).",
+    )
     p_validate.set_defaults(func=_cmd_validate)
 
     p_build = sub.add_parser("build", help="Export the wiki as static HTML files (for GitHub Pages etc).")

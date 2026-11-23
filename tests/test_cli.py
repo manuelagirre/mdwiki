@@ -32,3 +32,23 @@ def test_validate_on_a_real_dir_still_works(tmp_path, capsys):
     (tmp_path / "index.md").write_text("# Home\n", encoding="utf-8")
     code, out = _run(["validate", "--dir", str(tmp_path)], capsys)
     assert code == 0 and "clean" in out
+
+
+def test_warnings_alone_pass_unless_strict(tmp_path, capsys):
+    (tmp_path / "a.md").write_text("# A\n", encoding="utf-8")
+    (tmp_path / "b.md").write_text("# B\n", encoding="utf-8")
+    (tmp_path / "_order.yml").write_text("- a.md\n", encoding="utf-8")  # b.md unlisted
+
+    code, out = _run(["validate", "--dir", str(tmp_path)], capsys)
+    assert code == 0 and "1 warning(s)" in out and "'b.md' is present but unlisted" in out
+    code, out = _run(["validate", "--dir", str(tmp_path), "--strict"], capsys)
+    assert code == 1 and "failing: --strict" in out
+
+
+def test_errors_fail_and_are_listed_before_warnings(tmp_path, capsys):
+    (tmp_path / "a.md").write_text("# A\n\n[x](nope.md)\n", encoding="utf-8")
+    (tmp_path / "b.md").write_text("# B\n", encoding="utf-8")
+    (tmp_path / "_order.yml").write_text("- a.md\n", encoding="utf-8")
+    code, out = _run(["validate", "--dir", str(tmp_path)], capsys)
+    assert code == 1
+    assert out.index("1 error(s)") < out.index("1 warning(s)")
