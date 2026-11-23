@@ -6,17 +6,30 @@
 
 import {mountWidget} from '/_assets/shadow-helper.js';
 
+const STYLES = ['info', 'warning', 'error'];
+
 document.querySelectorAll('[data-widget="toast"]').forEach((host) => {
   mountWidget(host, (container) => {
     const title = host.getAttribute('title') || '';
     const text = host.getAttribute('text') || '';
-    const style = host.getAttribute('style') || 'info';
+    const requested = host.getAttribute('style');
+    const style = STYLES.includes(requested) ? requested : 'info';
 
-    container.innerHTML = `
-      <div class="toast toast-${style}">
-        ${title ? `<strong class="toast-title">${title}</strong>` : ''}
-        <span class="toast-text">${text}</span>
-      </div>
-    `;
+    // Built with textContent, never innerHTML: params arrive HTML-decoded
+    // by getAttribute(), so interpolating them into markup would re-parse
+    // author text (a `<T>` in a title, say) as HTML.
+    const panel = document.createElement('div');
+    panel.className = `toast toast-${style}`;
+    if (title) {
+      const strong = document.createElement('strong');
+      strong.className = 'toast-title';
+      strong.textContent = title;
+      panel.appendChild(strong);
+    }
+    const span = document.createElement('span');
+    span.className = 'toast-text';
+    span.textContent = text;
+    panel.appendChild(span);
+    container.appendChild(panel);
   });
 });

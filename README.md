@@ -244,11 +244,17 @@ import {mountWidget} from '/_assets/shadow-helper.js';
 
 document.querySelectorAll('[data-widget="my-widget"]').forEach((host) => {
   mountWidget(host, (container) => {
-    const value = host.getAttribute('param') || '';
-    container.innerHTML = `<p>hi, param = ${value}</p>`;
+    const p = document.createElement('p');
+    p.textContent = `hi, param = ${host.getAttribute('param') || ''}`;
+    container.appendChild(p);
   });
 });
 ```
+
+Put param values into the DOM with `textContent` / `setAttribute`, not by
+interpolating them into an `innerHTML` string: `getAttribute()` returns the
+value HTML-decoded, so `innerHTML` would re-parse an author's `<T>` (or a
+stray `<img onerror=...>`) as real markup.
 
 `mountWidget` (shipped with core, at `/_assets/shadow-helper.js`) attaches
 a Shadow DOM to the host, loads your widget's own `widget.css` into that

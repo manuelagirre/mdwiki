@@ -7,7 +7,7 @@
 //   import { mountWidget } from '/_assets/shadow-helper.js';
 //   document.querySelectorAll('[data-widget="my-widget"]').forEach((host) => {
 //     mountWidget(host, (container) => {
-//       container.innerHTML = `<p>hi, param = ${host.getAttribute('param')}</p>`;
+//       container.textContent = `hi, param = ${host.getAttribute('param')}`;
 //     });
 //   });
 
