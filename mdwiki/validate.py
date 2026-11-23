@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
 from .config import SiteConfig
-from .ordering import ORDER_FILENAME, read_order_file
+from .ordering import ORDER_FILENAME, orderable_names, read_order_file
 from .render import PageNotFound, WikiRenderer, frontmatter_problems, relpath_to_url
 from .widgets import resolve_widget
 
@@ -55,12 +55,14 @@ def validate(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[s
         if not order_path.is_file():
             continue
         listed = read_order_file(dir_path)
-        on_disk = {
-            p.name for p in dir_path.iterdir() if p.is_dir() or (p.is_file() and p.suffix == ".md")
-        }
+        on_disk = orderable_names(dir_path)
         rel_dir = dir_path.relative_to(root)
         for name in listed:
-            if name not in on_disk:
+            if name in on_disk:
+                continue
+            if (dir_path / name).exists():
+                issues.append(f"{rel_dir / ORDER_FILENAME}: entry {name!r} is not a page or a directory of pages")
+            else:
                 issues.append(f"{rel_dir / ORDER_FILENAME}: entry {name!r} does not exist on disk")
         # index.md is never expected in the manifest - it's the directory's
         # own leaf entry, folded in by whichever level lists this directory,
