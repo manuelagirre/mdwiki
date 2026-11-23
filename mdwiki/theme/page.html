@@ -30,8 +30,18 @@
     {% endfor %}
     {% if search_enabled %}
     <form class="site-search" action="/_search" method="get" role="search">
-      <input type="search" name="q" placeholder="Search" aria-label="Search the wiki">
+      <input type="search" name="q" placeholder="Search  ( / )" aria-label="Search the wiki" aria-keyshortcuts="/">
     </form>
+    <script>
+      // "/" jumps to the search box (as on GitHub, MDN, ...), unless the
+      // reader is already typing somewhere.
+      document.addEventListener("keydown", (event) => {
+        const typing = event.target.closest("input, textarea, select, [contenteditable]");
+        if (event.key !== "/" || typing || event.ctrlKey || event.metaKey || event.altKey) return;
+        event.preventDefault();
+        document.querySelector(".site-search input").focus();
+      });
+    </script>
     {% endif %}
   </nav>
   <main class="site-content">

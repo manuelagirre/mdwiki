@@ -215,7 +215,8 @@ but not `lessons/lesson-1/exercises/ex-1.md`.
 
 ## Search
 
-Every page of the default theme has a search box in the nav; it submits to
+Every page of the default theme has a search box in the nav (press `/` to
+jump to it); it submits to
 `/_search?q=...`, which lists the pages containing *all* the query's words
 (case-insensitive, title or text), title matches first, each with a short
 highlighted snippet. No index to build and no JavaScript: pages are read
