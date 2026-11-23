@@ -345,3 +345,14 @@ def test_404_is_rendered_in_the_site_shell():
     assert "Page not found" in res.text
     assert 'class="site-nav"' in res.text  # nav still there to recover with
     assert "Example Wiki" in res.text
+
+
+def test_head_requests_are_answered_like_get():
+    """curl -I, link checkers and uptime monitors use HEAD."""
+    client = _client()
+    for url in ("/", "/lessons/", "/lessons/lesson-1", "/_assets/app.css", "/_widgets/toast/widget.js", "/_search?q=x"):
+        res = client.head(url)
+        assert res.status_code == 200, url
+        assert res.content == b"", url
+    assert client.head("/nope").status_code == 404
+    assert client.head("/lessons", follow_redirects=False).status_code == 308

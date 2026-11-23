@@ -66,7 +66,7 @@ def create_app(
         except Exception:  # a broken custom template must not turn 404s into 500s
             return PlainTextResponse("Not found", status_code=404)
 
-    @app.get("/_assets/{asset_path:path}")
+    @app.api_route("/_assets/{asset_path:path}", methods=["GET", "HEAD"])
     async def _assets(asset_path: str):
         for base in (*theme_path, STATIC_DIR):
             candidate = (base / asset_path).resolve()
@@ -74,7 +74,7 @@ def create_app(
                 return FileResponse(candidate)
         raise HTTPException(status_code=404, detail="asset not found")
 
-    @app.get("/_widgets/{name}/{asset_path:path}")
+    @app.api_route("/_widgets/{name}/{asset_path:path}", methods=["GET", "HEAD"])
     async def _widget_assets(name: str, asset_path: str):
         widget_dir = resolve_widget(name, effective_widgets_dir)
         if widget_dir is None:
@@ -125,17 +125,17 @@ def create_app(
             location += "?" + request.url.query
         return RedirectResponse(location, status_code=308)
 
-    @app.get("/_search")
+    @app.api_route("/_search", methods=["GET", "HEAD"])
     async def _search(request: Request, q: str = ""):
         hits = search(renderer, q)
         title = f"Search: {q}" if q.strip() else "Search"
         return _shell_response(request, title, results_html(q, hits))
 
-    @app.get("/")
+    @app.api_route("/", methods=["GET", "HEAD"])
     async def _index(request: Request):
         return await _page(request, "")
 
-    @app.get("/{url_path:path}")
+    @app.api_route("/{url_path:path}", methods=["GET", "HEAD"])
     async def _page(request: Request, url_path: str):
         # Relative links in a page resolve against the URL it's served at,
         # so a page must only ever be served at its canonical URL:
