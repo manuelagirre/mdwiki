@@ -24,7 +24,9 @@
     {# Active on the link's own page and anything below it - `/lessons`
        and `/lessons/` both cover `/lessons/x`, but not `/lessons-old/x`. #}
     {% set base = link.href.rstrip('/') %}
-    <a href="{{ link.href }}" class="{{ 'active' if request_path == link.href or (base and (request_path == base or request_path.startswith(base ~ '/'))) else '' }}">{{ link.label }}</a>
+    {% set is_current = request_path == link.href %}
+    {% set is_active = is_current or (base and (request_path == base or request_path.startswith(base ~ '/'))) %}
+    <a href="{{ link.href }}" class="{{ 'active' if is_active else '' }}"{% if is_current %} aria-current="page"{% endif %}>{{ link.label }}</a>
     {% endfor %}
     {% if search_enabled %}
     <form class="site-search" action="/_search" method="get" role="search">

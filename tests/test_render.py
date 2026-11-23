@@ -298,12 +298,15 @@ def test_nav_active_state_respects_path_segments(tmp_path):
     client = TestClient(create_app(content_dir=tmp_path, config_path=cfg))
 
     def active(url):
-        return re.findall(r'class="active">([^<]+)</a>', client.get(url).text)
+        return re.findall(r'class="active"[^>]*>([^<]+)</a>', client.get(url).text)
 
     assert active("/") == ["Home"]
     assert active("/lessons/") == ["Lessons"]
     assert active("/lessons/one") == ["Lessons"]
     assert active("/lessons-old/") == []
+    # screen readers: only the exact page is aria-current
+    assert 'href="/" class="active" aria-current="page"' in client.get("/").text
+    assert 'aria-current' not in client.get("/lessons/one").text
 
 
 def test_validate_checks_nav_index_and_back_links(tmp_path):
