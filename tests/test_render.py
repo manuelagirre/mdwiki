@@ -154,8 +154,16 @@ def test_validate_catches_dangling_link_and_broken_anchor(tmp_path):
 
 def test_nul_byte_in_url_is_404_not_500():
     client = _client()
-    for url in ("/%00", "/lessons/a%00b", "/lessons%00/lesson-1"):
+    for url in ("/%00", "/lessons/a%00b", "/lessons%00/lesson-1", "/_assets/%00", "/_widgets/toast/%00", "/_widgets/%00/x"):
         assert client.get(url).status_code == 404, url
+
+
+def test_overlong_names_are_404_not_500():
+    client = _client()
+    long = "a" * 300
+    for url in (f"/{long}", f"/{long}/lesson-1/", "/lessons/" + "b/" * 2000 + "c",
+                f"/_assets/{long}", f"/_widgets/toast/{long}", f"/_widgets/{long}/widget.js"):
+        assert client.get(url, follow_redirects=False).status_code == 404, url[:40]
 
 
 def test_non_canonical_page_urls_redirect_to_canonical():

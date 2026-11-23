@@ -45,6 +45,19 @@ def _templates_for(search_path: tuple[Path, ...]):
     return _TEMPLATES_CACHE[search_path]
 
 
+def _contained_file(base: Path, rel: str) -> Path | None:
+    """`base/rel` if it is a file inside `base`, else None. A path the OS
+    can't even look up (NUL byte, over-long name) is also just None - a
+    404, not a 500."""
+    try:
+        candidate = (base / rel).resolve()
+        if candidate.is_relative_to(base.resolve()) and candidate.is_file():
+            return candidate
+    except (OSError, ValueError):
+        pass
+    return None
+
+
 def _change_token(roots: tuple[Path, ...]) -> str:
     """Cheap fingerprint of the files under `roots` (dot-paths skipped):
     changes whenever a file is added, removed or modified. Polled by pages
@@ -112,20 +125,23 @@ def create_app(
     @app.api_route("/_assets/{asset_path:path}", methods=["GET", "HEAD"])
     def _assets(asset_path: str):
         for base in (*theme_path, STATIC_DIR):
-            candidate = (base / asset_path).resolve()
-            if candidate.is_relative_to(base.resolve()) and candidate.is_file():
-                return FileResponse(candidate)
+            found = _contained_file(base, asset_path)
+            if found is not None:
+                return FileResponse(found)
         raise HTTPException(status_code=404, detail="asset not found")
 
     @app.api_route("/_widgets/{name}/{asset_path:path}", methods=["GET", "HEAD"])
     def _widget_assets(name: str, asset_path: str):
-        widget_dir = resolve_widget(name, effective_widgets_dir)
+        try:
+            widget_dir = resolve_widget(name, effective_widgets_dir)
+        except (OSError, ValueError):  # NUL or over-long name
+            widget_dir = None
         if widget_dir is None:
             raise HTTPException(status_code=404, detail="no such widget")
-        candidate = (widget_dir / asset_path).resolve()
-        if not candidate.is_relative_to(widget_dir.resolve()) or not candidate.is_file():
+        found = _contained_file(widget_dir, asset_path)
+        if found is None:
             raise HTTPException(status_code=404, detail="asset not found")
-        return FileResponse(candidate)
+        return FileResponse(found)
 
     def _shell_response(
         request: Request,
