@@ -12,6 +12,7 @@ from urllib.parse import unquote, urljoin, urlsplit
 
 from .config import SiteConfig
 from .ordering import ORDER_FILENAME, Page, orderable_names, read_order_file
+from .paths import is_hidden
 from .render import PageNotFound, RenderedPage, WikiRenderer, frontmatter_problems, relpath_to_url
 from .widgets import resolve_widget
 
@@ -24,7 +25,7 @@ _HTML_SUFFIXES = (".html", ".htm")
 
 
 def _in_dot_path(root: Path, path: Path) -> bool:
-    return any(part.startswith(".") for part in path.relative_to(root).parts)
+    return is_hidden(path.relative_to(root))
 
 
 def _all_md_files(root: Path) -> list[Path]:

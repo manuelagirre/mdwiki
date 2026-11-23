@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 
 from .config import SiteConfig
+from .paths import is_hidden
 from .render import PageNotFound, WikiRenderer, relpath_to_url
 from .search import results_html, search
 from .theme import DEFAULT_THEME_DIR, STATIC_DIR
@@ -50,7 +51,7 @@ def _change_token(roots: tuple[Path, ...]) -> str:
     newest, count = 0, 0
     for root in roots:
         for path in root.rglob("*"):
-            if any(part.startswith(".") for part in path.relative_to(root).parts):
+            if is_hidden(path.relative_to(root)):
                 continue
             try:
                 stat = path.stat()

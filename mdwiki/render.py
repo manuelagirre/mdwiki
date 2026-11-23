@@ -20,6 +20,7 @@ from .config import SiteConfig
 from .link_rewrite import InternalLinkExtension
 from .mermaid import MermaidExtension
 from .ordering import Page, adjacent, has_pages, ordered_entries, selector_matches, walk
+from .paths import is_hidden
 from .widgets import widget_markup
 
 # `extra` bundles attr_list/def_list/fenced_code/footnotes/md_in_html/tables -
@@ -189,7 +190,7 @@ _RAW_EXCLUDED_NAMES = ("_order.yml",)
 def _raw_excluded(parts) -> bool:
     name = parts[-1].lower()
     return (
-        any(part.startswith(".") for part in parts)
+        is_hidden(parts)
         or name in _RAW_EXCLUDED_NAMES
         or name.endswith(_RAW_EXCLUDED_SUFFIXES)
     )
@@ -254,7 +255,7 @@ class WikiRenderer:
         `config.index_page` (if set) before falling back to plain
         `index.md` - see SiteConfig.index_page."""
         url_path = url_path.strip("/")
-        if any(part.startswith(".") for part in url_path.split("/")):
+        if is_hidden(url_path):
             # Dot-paths (`.github/`, `.private.md`) are never part of the
             # site - not served raw, listed, ordered or searched, and not
             # rendered either.
@@ -313,7 +314,7 @@ class WikiRenderer:
         rel = url_path.strip("/")
         if not rel:
             return ""
-        if any(part.startswith(".") or _unsafe_segment(part) for part in rel.split("/")):
+        if is_hidden(rel) or any(_unsafe_segment(part) for part in rel.split("/")):
             return None
         path = self._safe_join(rel)
         if path.is_dir() and has_pages(path):

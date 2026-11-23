@@ -27,6 +27,7 @@ from urllib.parse import quote
 
 from .config import SiteConfig
 from .ordering import has_pages
+from .paths import is_hidden
 from .render import PageNotFound, WikiRenderer, relpath_to_url
 from .server import _theme_search_path, create_app
 from .theme import STATIC_DIR
@@ -89,10 +90,6 @@ def _fetch(app, url: str) -> _Response:
     return _Response(status, b"".join(chunks))
 
 
-def _is_dot_path(rel: Path) -> bool:
-    return any(part.startswith(".") for part in rel.parts)
-
-
 def _output_path(out: Path, url: str) -> Path:
     if url == "/":
         return out / "index.html"
@@ -119,7 +116,7 @@ def _prepare_out_dir(out: Path, content_dir: Path) -> None:
 def _copy_tree(src: Path, dest: Path) -> None:
     for path in src.rglob("*"):
         rel = path.relative_to(src)
-        if not path.is_file() or _is_dot_path(rel) or _SKIP_ASSET_NAMES & set(rel.parts):
+        if not path.is_file() or is_hidden(rel) or _SKIP_ASSET_NAMES & set(rel.parts):
             continue
         target = dest / rel
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -149,7 +146,7 @@ def build(
     urls = {"/"}
     for path in content_dir.rglob("*"):
         rel = path.relative_to(content_dir)
-        if _is_dot_path(rel):
+        if is_hidden(rel):
             continue
         if path.is_file() and path.suffix == ".md":
             urls.add(relpath_to_url(rel.as_posix()))
@@ -176,7 +173,7 @@ def build(
     # would serve them - the same exclusions apply (.md sources, _order.yml).
     for path in content_dir.rglob("*"):
         rel = path.relative_to(content_dir)
-        if not path.is_file() or _is_dot_path(rel):
+        if not path.is_file() or is_hidden(rel):
             continue
         try:
             renderer.resolve_file(rel.as_posix())

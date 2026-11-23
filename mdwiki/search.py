@@ -15,6 +15,7 @@ from html import escape
 from pathlib import Path
 from urllib.parse import quote
 
+from .paths import is_hidden
 from .render import WikiRenderer, relpath_to_url
 
 MAX_RESULTS = 50
@@ -73,7 +74,7 @@ def _pages(root: Path) -> list[str]:
     return sorted(
         p.relative_to(root).as_posix()
         for p in root.rglob("*.md")
-        if p.is_file() and not any(part.startswith(".") for part in p.relative_to(root).parts)
+        if p.is_file() and not is_hidden(p.relative_to(root))
     )
 
 

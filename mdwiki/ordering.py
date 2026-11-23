@@ -15,6 +15,8 @@ from pathlib import Path, PurePosixPath
 
 import yaml
 
+from .paths import is_hidden
+
 ORDER_FILENAME = "_order.yml"
 
 
@@ -35,7 +37,7 @@ def has_pages(dir_path: Path) -> bool:
     """Whether a directory holds at least one `.md` page anywhere below it
     (not counting dot-paths, which are never part of the site's pages)."""
     for child in dir_path.iterdir():
-        if child.name.startswith("."):
+        if is_hidden(child.name):
             continue
         if child.is_file() and child.suffix == ".md":
             return True
@@ -53,7 +55,7 @@ def orderable_names(dir_path: Path) -> set[str]:
     return {
         p.name
         for p in dir_path.iterdir()
-        if not p.name.startswith(".")
+        if not is_hidden(p.name)
         and ((p.is_file() and p.suffix == ".md") or (p.is_dir() and has_pages(p)))
     }
 
