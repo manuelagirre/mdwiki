@@ -6,6 +6,7 @@ site config, and an optional widgets directory.
 """
 from __future__ import annotations
 
+import html
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,7 +44,6 @@ MD_EXTENSION_CONFIGS = {
 # Opening `---` line, then everything up to the first closing `---` line.
 # The body may be empty (`---\n---`) and the closing fence may end the file.
 _FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.*?)^---[ \t]*(?:\n|\Z)", re.DOTALL | re.MULTILINE)
-_H1_RE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
 WIDGET_MACRO_RE = re.compile(r'\{\{\s*widget:\s*([A-Za-z0-9_-]+)((?:\s+[A-Za-z0-9_-]+="[^"]*")*)\s*\}\}')
 _WIDGET_MACRO_RE = WIDGET_MACRO_RE  # internal alias, kept for brevity below
 _ATTR_RE = re.compile(r'([A-Za-z0-9_-]+)="([^"]*)"')
@@ -103,12 +103,34 @@ def _parse_frontmatter(text: str) -> tuple[dict, str]:
     return data, body
 
 
-def _page_title(frontmatter: dict, body: str, relpath: str) -> str:
+def _first_h1(toc_tokens: list[dict]) -> str | None:
+    """Plain text of the document's first `<h1>`, from the `toc`
+    extension's tokens - i.e. what the markdown parser actually treated as
+    a heading, so `# comment` lines inside code blocks don't count, setext
+    `Title\n=====` headings do, and inline markup (`code`, **bold**,
+    links) is reduced to its text."""
+    for token in toc_tokens:
+        if token["level"] == 1:
+            return html.unescape(token["name"]).strip() or None
+        found = _first_h1(token["children"])
+        if found:
+            return found
+    return None
+
+
+def _page_title(frontmatter: dict, body: str, relpath: str, toc_tokens: list[dict] | None = None) -> str:
+    """frontmatter `title`, else the first H1, else the humanized filename.
+    Pass `toc_tokens` from a conversion you already ran to avoid parsing
+    the body a second time."""
     if "title" in frontmatter:
         return str(frontmatter["title"])
-    h1 = _H1_RE.search(body)
+    if toc_tokens is None:
+        md = markdown.Markdown(extensions=["extra", "toc"])
+        md.convert(body)
+        toc_tokens = md.toc_tokens
+    h1 = _first_h1(toc_tokens)
     if h1:
-        return h1.group(1).strip()
+        return h1
     stem = Path(relpath).stem if Path(relpath).name != "index.md" else Path(relpath).parent.name
     return stem.replace("-", " ").replace("_", " ").title()
 
@@ -263,7 +285,6 @@ class WikiRenderer:
 
     def render_relpath(self, relpath: str) -> RenderedPage:
         frontmatter, body = self._read(relpath)
-        title = _page_title(frontmatter, body, relpath)
 
         excluded = {str(name) for name in (frontmatter.get("widgets") or {}).get("exclude") or []}
 
@@ -277,6 +298,7 @@ class WikiRenderer:
         md = markdown.Markdown(extensions=MD_EXTENSIONS, extension_configs=MD_EXTENSION_CONFIGS)
         content_html = md.convert(body_with_placeholders)
         has_mermaid = md.mdwiki_has_mermaid
+        title = _page_title(frontmatter, body, relpath, md.toc_tokens)
 
         def _fill(m: re.Match) -> str:
             name, attrs = macro_refs[int(m.group(1))]
