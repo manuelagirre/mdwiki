@@ -265,3 +265,25 @@ def test_next_button_label_uses_parsed_title(tmp_path):
     config = SiteConfig(widget_hooks=[WidgetHook(name="next-button", anchor="bottom", selector="*.md")])
     html = WikiRenderer(tmp_path, config, None).render_relpath("a.md").content_html
     assert 'label="B Title"' in html
+
+
+def test_widget_macros_shown_as_code_stay_literal(tmp_path):
+    text = (
+        "# A\n\n"
+        'Inline: `{{ widget: toast text="hi" }}`.\n\n'
+        '```markdown\n{{ widget: my-widget param="v" }}\n```\n\n'
+        "```mermaid\ngraph TD; A[\"{{ widget: in-diagram }}\"]\n```\n\n"
+        'Live: {{ widget: toast text="real" }}\n'
+    )
+    (tmp_path / "a.md").write_text(text, encoding="utf-8")
+    page = WikiRenderer(tmp_path, SiteConfig(), None).render_relpath("a.md")
+
+    assert page.macro_widgets == ["toast"]  # only the live one
+    assert page.content_html.count('class="mdwiki-widget"') == 1
+    assert "<code>{{ widget: toast text=\"hi\" }}</code>" in page.content_html
+    assert "my-widget" in page.content_html and "Widget not found" not in page.content_html
+    assert "{{ widget: in-diagram }}" in page.content_html
+    assert "MDWIKIWIDGETPLACEHOLDER" not in page.content_html
+
+    # validate doesn't flag the examples as unresolved widgets
+    assert validate(tmp_path, SiteConfig(), None) == []

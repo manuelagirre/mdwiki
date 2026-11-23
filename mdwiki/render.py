@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import html
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from html import escape
 from pathlib import Path
 
 import markdown
@@ -135,17 +136,36 @@ def _page_title(frontmatter: dict, body: str, relpath: str, toc_tokens: list[dic
     return stem.replace("-", " ").replace("_", " ").title()
 
 
-def _extract_macros(body: str) -> tuple[str, list[tuple[str, dict[str, str]]]]:
-    refs: list[tuple[str, dict[str, str]]] = []
+@dataclass(frozen=True)
+class _MacroRef:
+    name: str
+    attrs: dict[str, str]
+    source: str  # the macro exactly as written, restored where it's literal
+
+
+def _extract_macros(body: str) -> tuple[str, list[_MacroRef]]:
+    refs: list[_MacroRef] = []
 
     def _sub(m: re.Match) -> str:
-        name = m.group(1)
         attrs = dict(_ATTR_RE.findall(m.group(2) or ""))
-        idx = len(refs)
-        refs.append((name, attrs))
-        return _PLACEHOLDER.format(idx=idx)
+        refs.append(_MacroRef(name=m.group(1), attrs=attrs, source=m.group(0)))
+        return _PLACEHOLDER.format(idx=len(refs) - 1)
 
     return _WIDGET_MACRO_RE.sub(_sub, body), refs
+
+
+# Regions of rendered HTML whose text is shown literally: inline/fenced code
+# and mermaid diagram source. A macro that lands in one is an *example* of
+# the syntax (`{{ widget: x }}` in backticks, a ```markdown block), so it is
+# put back as written instead of expanded into a live widget.
+_LITERAL_REGION_RE = re.compile(r'<code\b[^>]*>.*?</code>|<pre class="mermaid">.*?</pre>', re.DOTALL)
+
+
+def _restore_literal_macros(html_text: str, refs: list[_MacroRef]) -> str:
+    def _restore(m: re.Match) -> str:
+        return _PLACEHOLDER_RE.sub(lambda p: escape(refs[int(p.group(1))].source, quote=False), m.group(0))
+
+    return _LITERAL_REGION_RE.sub(_restore, html_text)
 
 
 # Never served raw by `WikiRenderer.resolve_file`: markdown source (served
@@ -190,6 +210,9 @@ class RenderedPage:
     content_html: str
     back_link: dict[str, str] | None
     has_mermaid: bool = False
+    macro_widgets: list[str] = field(default_factory=list)
+    """Names of the `{{ widget: ... }}` macros actually expanded on this page
+    (not ones shown literally inside code), in order of appearance."""
 
 
 class WikiRenderer:
@@ -300,9 +323,13 @@ class WikiRenderer:
         has_mermaid = md.mdwiki_has_mermaid
         title = _page_title(frontmatter, body, relpath, md.toc_tokens)
 
+        content_html = _restore_literal_macros(content_html, macro_refs)
+        live_widgets: list[str] = []
+
         def _fill(m: re.Match) -> str:
-            name, attrs = macro_refs[int(m.group(1))]
-            return widget_markup(name, attrs, self.widgets_dir)
+            ref = macro_refs[int(m.group(1))]
+            live_widgets.append(ref.name)
+            return widget_markup(ref.name, ref.attrs, self.widgets_dir)
 
         content_html = _PLACEHOLDER_RE.sub(_fill, content_html)
 
@@ -329,4 +356,10 @@ class WikiRenderer:
             bl = frontmatter["back_link"]
             back_link = {"href": bl.get("href", ""), "label": bl.get("label", "Back")}
 
-        return RenderedPage(title=title, content_html=full_html, back_link=back_link, has_mermaid=has_mermaid)
+        return RenderedPage(
+            title=title,
+            content_html=full_html,
+            back_link=back_link,
+            has_mermaid=has_mermaid,
+            macro_widgets=live_widgets,
+        )

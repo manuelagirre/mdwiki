@@ -213,7 +213,8 @@ Two ways a widget ends up on a page:
 
 - **Content-authored (macro):** the page author writes
   `{{ widget: my-widget param="value" }}` inline in the markdown, anywhere
-  in the prose.
+  in the prose. A macro inside inline code or a code block is shown as
+  written, not expanded - so docs can show the syntax (as this line does).
 - **Auto-injected (hook):** a row in `mdwiki.yml`'s `widgets:` list, matched
   against every page whose resolved path matches `selector`. The page
   author does nothing; a page can still opt out via frontmatter

@@ -12,7 +12,7 @@ from urllib.parse import urljoin, urlsplit
 
 from .config import SiteConfig
 from .ordering import ORDER_FILENAME, read_order_file
-from .render import WIDGET_MACRO_RE, PageNotFound, WikiRenderer, frontmatter_problems, relpath_to_url
+from .render import PageNotFound, WikiRenderer, frontmatter_problems, relpath_to_url
 from .widgets import resolve_widget
 
 _HREF_RE = re.compile(r'<a\b[^>]*\bhref="([^"]*)"')
@@ -72,14 +72,19 @@ def validate(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[s
             )
 
     # --- frontmatter + widget references --------------------------------------
+    renderer = WikiRenderer(root, config, widgets_dir)
     for md_path in _all_md_files(root):
-        text = md_path.read_text(encoding="utf-8-sig")
-        for problem in frontmatter_problems(text):
-            issues.append(f"{md_path.relative_to(root)}: {problem}")
-        for m in WIDGET_MACRO_RE.finditer(text):
-            name = m.group(1)
+        rel = md_path.relative_to(root)
+        for problem in frontmatter_problems(md_path.read_text(encoding="utf-8-sig")):
+            issues.append(f"{rel}: {problem}")
+        # Only macros the renderer actually expands - a `{{ widget: x }}`
+        # shown inside code is an example of the syntax, not a reference.
+        try:
+            live = renderer.render_relpath(rel.as_posix()).macro_widgets
+        except Exception:
+            continue  # reported as "failed to render" by _check_links below
+        for name in live:
             if resolve_widget(name, widgets_dir) is None:
-                rel = md_path.relative_to(root)
                 issues.append(f"{rel}: {{{{ widget: {name} }}}} does not resolve under ./widgets/")
 
     for hook in config.widget_hooks:
