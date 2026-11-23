@@ -13,8 +13,8 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 
 from .config import SiteConfig
 from .render import PageNotFound, WikiRenderer, relpath_to_url
-from .theme import DEFAULT_THEME_DIR, STATIC_DIR
 from .search import results_html, search
+from .theme import DEFAULT_THEME_DIR, STATIC_DIR
 from .widgets import resolve_widget
 
 DEFAULT_FAVICON = (
@@ -59,6 +59,11 @@ def create_app(
 
     app = FastAPI(title=config.title)
 
+    # Route handlers are plain `def`, not `async def`: they read files and
+    # render markdown (blocking work), and FastAPI runs sync handlers in its
+    # threadpool - an `async def` doing the same would run on the event
+    # loop and stall every other request until it finished.
+
     @app.exception_handler(PageNotFound)
     async def _not_found(request: Request, exc: PageNotFound):
         # Byte-identical body for every miss (missing page, traversal
@@ -76,7 +81,7 @@ def create_app(
             return PlainTextResponse("Not found", status_code=404)
 
     @app.api_route("/_assets/{asset_path:path}", methods=["GET", "HEAD"])
-    async def _assets(asset_path: str):
+    def _assets(asset_path: str):
         for base in (*theme_path, STATIC_DIR):
             candidate = (base / asset_path).resolve()
             if candidate.is_relative_to(base.resolve()) and candidate.is_file():
@@ -84,7 +89,7 @@ def create_app(
         raise HTTPException(status_code=404, detail="asset not found")
 
     @app.api_route("/_widgets/{name}/{asset_path:path}", methods=["GET", "HEAD"])
-    async def _widget_assets(name: str, asset_path: str):
+    def _widget_assets(name: str, asset_path: str):
         widget_dir = resolve_widget(name, effective_widgets_dir)
         if widget_dir is None:
             raise HTTPException(status_code=404, detail="no such widget")
@@ -139,17 +144,17 @@ def create_app(
         return RedirectResponse(location, status_code=308)
 
     @app.api_route("/_search", methods=["GET", "HEAD"])
-    async def _search(request: Request, q: str = ""):
+    def _search(request: Request, q: str = ""):
         hits = search(renderer, q)
         title = f"Search: {q}" if q.strip() else "Search"
         return _shell_response(request, title, results_html(q, hits))
 
     @app.api_route("/", methods=["GET", "HEAD"])
-    async def _index(request: Request):
-        return await _page(request, "")
+    def _index(request: Request):
+        return _page(request, "")
 
     @app.api_route("/{url_path:path}", methods=["GET", "HEAD"])
-    async def _page(request: Request, url_path: str):
+    def _page(request: Request, url_path: str):
         # Relative links in a page resolve against the URL it's served at,
         # so a page must only ever be served at its canonical URL:
         # `dir/index.md` at `/dir/` (not `/dir`), `page.md` at `/page` (not
