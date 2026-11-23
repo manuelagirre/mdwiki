@@ -25,6 +25,27 @@ This launches its own ASGI process on its own port - there is no
 in-process/ASGI-mount API. Run it as its own process alongside whatever
 host app you're integrating it with.
 
+### Static export
+
+To publish without running a server (GitHub Pages, Netlify, S3, any
+static file host), export the site to plain files:
+
+```bash
+mdwiki build --dir ./wiki --config ./mdwiki.yml --out ./site
+```
+
+Every page is produced by the same app `mdwiki serve` runs, so the output
+matches it exactly. `lessons/loops.md` becomes `lessons/loops.html`
+(static hosts like GitHub Pages and Netlify serve it at
+`/lessons/loops`), directory pages become `dir/index.html`, raw files are
+copied as-is, the theme and the widgets in use land under `_assets/` and
+`_widgets/`, and the "Page not found" page is written as `404.html`. The
+nav search box is left out, since search needs the server.
+
+`--out` must be outside the content root, and either empty or a previous
+build's output (which is replaced); mdwiki won't overwrite a directory it
+didn't create.
+
 ## Routing
 
 Any `.md` file under the content root is served 1:1 by its relative path:

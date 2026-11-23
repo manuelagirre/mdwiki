@@ -47,7 +47,11 @@ def create_app(
     content_dir: Path,
     config_path: Path | None = None,
     widgets_dir: Path | None = None,
+    *,
+    search_enabled: bool = True,
 ) -> FastAPI:
+    """`search_enabled=False` hides the nav search box - for `mdwiki build`,
+    whose static output has no server behind `/_search`."""
     content_dir = Path(content_dir).resolve()
     config = SiteConfig.load(config_path)
     for warning in config.warnings:
@@ -119,6 +123,7 @@ def create_app(
                 "nav": config.nav,
                 "backend_base": config.backend_base,
                 "has_mermaid": has_mermaid,
+                "search_enabled": search_enabled,
                 "request_path": request.url.path,
                 # The content root's own favicon.ico if it has one (served
                 # raw like any other file), else a small built-in icon -

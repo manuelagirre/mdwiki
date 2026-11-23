@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from .build import BuildError, build
 from .config import ConfigError, SiteConfig
 from .ordering import OrderError, append, insert_after, insert_before, remove
 from .server import serve
@@ -27,6 +28,21 @@ def _cmd_validate(args: argparse.Namespace) -> int:
     for issue in issues:
         print(f"  - {issue}")
     return 1
+
+
+def _cmd_build(args: argparse.Namespace) -> int:
+    try:
+        pages = build(
+            Path(args.dir),
+            Path(args.out),
+            config_path=Path(args.config) if args.config else None,
+            widgets_dir=Path(args.widgets) if args.widgets else None,
+        )
+    except BuildError as exc:
+        print(f"mdwiki build: {exc}", file=sys.stderr)
+        return 1
+    print(f"mdwiki build: wrote {pages} page(s) to {args.out}")
+    return 0
 
 
 def _cmd_order(args: argparse.Namespace) -> int:
@@ -64,6 +80,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_validate.add_argument("--config", default=None)
     p_validate.add_argument("--widgets", default=None)
     p_validate.set_defaults(func=_cmd_validate)
+
+    p_build = sub.add_parser("build", help="Export the wiki as static HTML files (for GitHub Pages etc).")
+    p_build.add_argument("--dir", required=True, help="Content root directory.")
+    p_build.add_argument("--out", required=True, help="Output directory (created; must be empty or a previous build).")
+    p_build.add_argument("--config", default=None)
+    p_build.add_argument("--widgets", default=None)
+    p_build.set_defaults(func=_cmd_build)
 
     p_order = sub.add_parser("order", help="Edit a directory's _order.yml without hand-editing YAML.")
     order_sub = p_order.add_subparsers(dest="order_action", required=True)

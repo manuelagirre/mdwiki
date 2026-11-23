@@ -26,9 +26,11 @@
     {% set base = link.href.rstrip('/') %}
     <a href="{{ link.href }}" class="{{ 'active' if request_path == link.href or (base and (request_path == base or request_path.startswith(base ~ '/'))) else '' }}">{{ link.label }}</a>
     {% endfor %}
+    {% if search_enabled %}
     <form class="site-search" action="/_search" method="get" role="search">
       <input type="search" name="q" placeholder="Search" aria-label="Search the wiki">
     </form>
+    {% endif %}
   </nav>
   <main class="site-content">
     {% if back_link %}
