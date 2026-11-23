@@ -40,7 +40,9 @@ MD_EXTENSION_CONFIGS = {
     "toc": {"permalink": False},
 }
 
-_FRONTMATTER_RE = re.compile(r"\A---\n(.*?\n)---\n", re.DOTALL)
+# Opening `---` line, then everything up to the first closing `---` line.
+# The body may be empty (`---\n---`) and the closing fence may end the file.
+_FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.*?)^---[ \t]*(?:\n|\Z)", re.DOTALL | re.MULTILINE)
 _H1_RE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
 WIDGET_MACRO_RE = re.compile(r'\{\{\s*widget:\s*([A-Za-z0-9_-]+)((?:\s+[A-Za-z0-9_-]+="[^"]*")*)\s*\}\}')
 _WIDGET_MACRO_RE = WIDGET_MACRO_RE  # internal alias, kept for brevity below
@@ -67,8 +69,9 @@ def read_page_text(path: Path) -> str:
     """A `.md` page's text. Bytes that aren't valid UTF-8 (a Latin-1 file,
     say) become U+FFFD instead of failing the whole page - `mdwiki
     validate` reports such files. Line endings are normalized to `\n`
-    (CRLF files), as read_text() would."""
-    text = path.read_bytes().decode("utf-8", errors="replace")
+    (CRLF files), as read_text() would, and a leading BOM (as some Windows
+    editors write) is dropped so frontmatter still starts the text."""
+    text = path.read_bytes().decode("utf-8-sig", errors="replace")
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 

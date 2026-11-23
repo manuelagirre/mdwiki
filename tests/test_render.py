@@ -241,3 +241,34 @@ def test_non_utf8_page_renders_and_validate_reports_it(tmp_path):
 
     issues = validate(tmp_path, SiteConfig(), None)
     assert issues == ["cafe.md: not valid UTF-8 (byte 5); the page shows replacement characters there"]
+
+
+def _render(tmp_path, text: str):
+    (tmp_path / "page.md").write_text(text, encoding="utf-8", newline="")
+    return WikiRenderer(tmp_path, SiteConfig(), None).render_relpath("page.md")
+
+
+def test_frontmatter_after_utf8_bom_is_honoured(tmp_path):
+    page = _render(tmp_path, "﻿---\ntitle: From Frontmatter\n---\n# Heading\n")
+    assert page.title == "From Frontmatter"
+    assert "title:" not in page.content_html
+
+
+def test_empty_and_unterminated_frontmatter_blocks(tmp_path):
+    page = _render(tmp_path, "---\n---\n# Body\n")
+    assert page.title == "Body"
+    assert "---" not in page.content_html and "<h2" not in page.content_html
+
+    page = _render(tmp_path, "---\ntitle: Only Frontmatter\n---")  # no trailing newline
+    assert page.title == "Only Frontmatter"
+
+
+def test_frontmatter_with_crlf_line_endings(tmp_path):
+    page = _render(tmp_path, "---\r\ntitle: Windows\r\n---\r\n# H\r\n")
+    assert page.title == "Windows"
+
+
+def test_horizontal_rule_later_in_body_is_not_frontmatter(tmp_path):
+    page = _render(tmp_path, "# Title\n\n---\n\ntext\n\n---\n")
+    assert page.title == "Title"
+    assert "<hr" in page.content_html
