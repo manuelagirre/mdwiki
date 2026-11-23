@@ -140,3 +140,12 @@ def test_exclusions_ignore_case_and_unsafe_segments(tmp_path):
     ):
         res = client.get(path)
         assert res.status_code == 404, path
+
+
+def test_favicon_defaults_to_builtin_and_prefers_content_root_icon(tmp_path):
+    site = _site(tmp_path)
+    assert 'rel="icon" href="data:image/svg+xml' in _client(site).get("/").text
+    (site / "favicon.ico").write_bytes(b"\x00\x00\x01\x00")
+    client = _client(site)
+    assert 'rel="icon" href="/favicon.ico"' in client.get("/").text
+    assert client.get("/favicon.ico").status_code == 200
