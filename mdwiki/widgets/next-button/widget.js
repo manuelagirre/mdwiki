@@ -14,10 +14,20 @@ document.querySelectorAll('[data-widget="next-button"]').forEach((host) => {
     const href = host.getAttribute('href');
     const label = host.getAttribute('label') || 'Next';
 
+    // textContent, never innerHTML: the label is usually the next page's
+    // title, and getAttribute() hands it back HTML-decoded - a title like
+    // `Generics <T>` must show as text, not be parsed as a tag.
     if (!href) {
-      container.innerHTML = '<p class="next-button-empty">No next page.</p>';
+      const empty = document.createElement('p');
+      empty.className = 'next-button-empty';
+      empty.textContent = 'No next page.';
+      container.appendChild(empty);
       return;
     }
-    container.innerHTML = `<a class="next-button" href="${href}">${label} &rarr;</a>`;
+    const link = document.createElement('a');
+    link.className = 'next-button';
+    link.setAttribute('href', href);
+    link.textContent = `${label} \u2192`;
+    container.appendChild(link);
   });
 });
