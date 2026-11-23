@@ -370,7 +370,7 @@ its place.
 
 ## Standard widgets
 
-Two widgets ship with mdwiki itself - nothing to author or install, usable
+Three widgets ship with mdwiki itself - nothing to author or install, usable
 immediately by name via either mechanism above:
 
 - **`toast`** - a colored panel with bold title + text. Params: `title`
@@ -380,9 +380,13 @@ immediately by name via either mechanism above:
 - **`next-button`** - a "next page" link. Its `href`/`label` are normally
   computed by core from `_order.yml` when used as a hook; usable directly
   too (`{{ widget: next-button href="/lessons/loops" label="Next Lesson" }}`).
+- **`prev-button`** - its "previous page" counterpart, computed the same
+  way (and rendering nothing on the first page of the sequence). Add a
+  `prev-button` hook row with the same `selector` as your `next-button`
+  one for previous/next navigation.
 
-A host can shadow either by providing its own `./widgets/toast/` or
-`./widgets/next-button/` - your own copy is checked before the standard one.
+A host can shadow any of them by providing its own `./widgets/<name>/`
+(e.g. `./widgets/toast/`) - your own copy is checked before the standard one.
 
 ## Backend calls
 

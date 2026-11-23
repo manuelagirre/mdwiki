@@ -427,3 +427,24 @@ def test_non_ascii_headings_get_unicode_ids_and_links_to_them_validate(tmp_path)
     html = WikiRenderer(tmp_path, SiteConfig(), None).render_relpath("a.md").content_html
     assert re.findall(r'<h\d id="([^"]*)"', html) == ["привіт-світ", "café-au-lait", "plain-heading"]
     assert validate(tmp_path, SiteConfig(), None) == []
+
+
+def test_prev_button_hook_links_to_previous_page_and_skips_the_first():
+    from mdwiki.config import WidgetHook
+
+    config = SiteConfig.load(EXAMPLE / "mdwiki.yml")
+    config.widget_hooks.append(WidgetHook(name="prev-button", anchor="bottom", selector="lessons/*"))
+    renderer = WikiRenderer(EXAMPLE, config, None)
+
+    html = renderer.render_relpath("lessons/lesson-2.md").content_html
+    assert 'data-widget="prev-button" href="/lessons/lesson-1" label="Lesson 1 - Getting Started"' in html
+    assert 'data-widget="next-button" href="/lessons/lesson-3"' in html
+    # `lessons/*` also matches lessons/index.md, which is first in the sequence
+    assert 'data-widget="prev-button" href="/lessons/"' in renderer.render_relpath("lessons/lesson-1.md").content_html
+    assert 'data-widget="prev-button"' not in renderer.render_relpath("lessons/index.md").content_html
+
+
+def test_prev_button_assets_ship_with_mdwiki():
+    client = _client()
+    assert client.get("/_widgets/prev-button/widget.js").status_code == 200
+    assert client.get("/_widgets/prev-button/widget.css").status_code == 200

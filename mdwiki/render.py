@@ -423,14 +423,16 @@ class WikiRenderer:
         return walk(self.root)
 
     def _hook_attrs(self, hook_name: str, selector: str, relpath: str) -> dict[str, str] | None:
-        """Params to pass a hook-injected widget. `next-button` needs
-        core-computed "what page is next" from the ordering manifest; other
-        hook widgets get no extra params beyond what mdwiki.yml declares
-        (none, currently - extend here as new hook widgets need params)."""
-        if hook_name == "next-button":
-            target = adjacent(self.root, relpath, selector, direction=1, pages=self._pages_in_order())
+        """Params to pass a hook-injected widget. `next-button` /
+        `prev-button` need core-computed "what page is next/previous" from
+        the ordering manifest; other hook widgets get no extra params beyond
+        what mdwiki.yml declares (none, currently - extend here as new hook
+        widgets need params)."""
+        direction = {"next-button": 1, "prev-button": -1}.get(hook_name)
+        if direction is not None:
+            target = adjacent(self.root, relpath, selector, direction=direction, pages=self._pages_in_order())
             if target is None:
-                return None  # nothing to render - last page in the sequence
+                return None  # nothing to render - first/last page in the sequence
             return {"href": relpath_to_url(target.relpath), "label": self._title_for(target.relpath)}
         return {}
 
