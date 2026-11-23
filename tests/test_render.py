@@ -362,3 +362,17 @@ def test_headings_get_section_permalinks_without_changing_titles(tmp_path):
     page = _render(tmp_path, "# Main Title\n\n## Sub Section\n")
     assert page.title == "Main Title"
     assert '<a class="headerlink" href="#sub-section" title="Link to this section">#</a>' in page.content_html
+
+
+def test_cached_titles_follow_edits_on_disk(tmp_path):
+    import os
+
+    page = tmp_path / "p.md"
+    page.write_text("# Before\n", encoding="utf-8")
+    renderer = WikiRenderer(tmp_path, SiteConfig(), None)
+    assert renderer.page_source("p.md")[0] == "Before"
+
+    page.write_text("# After Edit\n", encoding="utf-8")
+    st = page.stat()
+    os.utime(page, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000))  # coarse-mtime filesystems
+    assert renderer.page_source("p.md")[0] == "After Edit"

@@ -231,6 +231,11 @@ class WikiRenderer:
         self.root = root.resolve()
         self.config = config
         self.widgets_dir = widgets_dir
+        # relpath -> (mtime_ns, size, title). Working out a title means a
+        # full markdown parse, and listings, next-button labels and search
+        # need the titles of many pages per request; the cache is keyed on
+        # the file's stat so an edit on disk is picked up immediately.
+        self._titles: dict[str, tuple[int, int, str]] = {}
 
     def _safe_join(self, relpath: str) -> Path:
         # A NUL byte makes the OS path calls below raise ValueError (a 500)
@@ -345,11 +350,18 @@ class WikiRenderer:
     def page_source(self, relpath: str) -> tuple[str, str]:
         """(title, markdown body without frontmatter) of a `.md` page."""
         frontmatter, body = self._read(relpath)
-        return _page_title(frontmatter, body, relpath), body
+        return self._title_for(relpath, frontmatter, body), body
 
-    def _title_for(self, relpath: str) -> str:
-        frontmatter, body = self._read(relpath)
-        return _page_title(frontmatter, body, relpath)
+    def _title_for(self, relpath: str, frontmatter: dict | None = None, body: str | None = None) -> str:
+        stat = self._safe_join(relpath).stat()
+        cached = self._titles.get(relpath)
+        if cached and cached[:2] == (stat.st_mtime_ns, stat.st_size):
+            return cached[2]
+        if body is None:
+            frontmatter, body = self._read(relpath)
+        title = _page_title(frontmatter or {}, body, relpath)
+        self._titles[relpath] = (stat.st_mtime_ns, stat.st_size, title)
+        return title
 
     def _pages_in_order(self) -> list[Page]:
         """The global page order. Walked fresh on every call, so the live
