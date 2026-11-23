@@ -61,14 +61,46 @@ class PageNotFound(Exception):
     which case it was."""
 
 
-def _parse_frontmatter(text: str) -> tuple[dict, str]:
+def _load_frontmatter(text: str) -> tuple[dict, str, list[str]]:
+    """(usable frontmatter, body, problems). Never raises: a typo in page
+    metadata shouldn't take the whole page down with a 500. Malformed YAML
+    or a field of the wrong shape is dropped (the body still renders) and
+    described in `problems`, which `mdwiki validate` reports."""
     m = _FRONTMATTER_RE.match(text)
     if not m:
-        return {}, text
-    data = yaml.safe_load(m.group(1)) or {}
+        return {}, text, []
+    body = text[m.end():]
+    try:
+        data = yaml.safe_load(m.group(1))
+    except yaml.YAMLError as exc:
+        detail = str(exc).splitlines()[0]
+        return {}, body, [f"frontmatter is not valid YAML ({detail}); ignored"]
+    if data is None:
+        return {}, body, []
     if not isinstance(data, dict):
-        data = {}
-    return data, text[m.end():]
+        return {}, body, [f"frontmatter must be a mapping, got {type(data).__name__}; ignored"]
+
+    problems: list[str] = []
+    widgets = data.get("widgets")
+    if widgets is not None:
+        exclude = widgets.get("exclude") if isinstance(widgets, dict) else None
+        if not isinstance(widgets, dict) or not isinstance(exclude, (list, type(None))):
+            problems.append("frontmatter `widgets` must look like `widgets: {exclude: [name, ...]}`; ignored")
+            del data["widgets"]
+    back_link = data.get("back_link")
+    if back_link and not isinstance(back_link, dict):
+        problems.append("frontmatter `back_link` must be a mapping with `href` (and optional `label`); ignored")
+        del data["back_link"]
+    return data, body, problems
+
+
+def frontmatter_problems(text: str) -> list[str]:
+    return _load_frontmatter(text)[2]
+
+
+def _parse_frontmatter(text: str) -> tuple[dict, str]:
+    data, body, _ = _load_frontmatter(text)
+    return data, body
 
 
 def _page_title(frontmatter: dict, body: str, relpath: str) -> str:
@@ -233,7 +265,7 @@ class WikiRenderer:
         frontmatter, body = self._read(relpath)
         title = _page_title(frontmatter, body, relpath)
 
-        excluded = set((frontmatter.get("widgets") or {}).get("exclude", []) or [])
+        excluded = {str(name) for name in (frontmatter.get("widgets") or {}).get("exclude") or []}
 
         body_with_placeholders, macro_refs = _extract_macros(body)
         # A fresh Markdown() instance per call, not the markdown.markdown()
