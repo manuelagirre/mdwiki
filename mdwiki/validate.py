@@ -61,7 +61,7 @@ class _CachingRenderer(WikiRenderer):
 def validate(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[str]:
     """Returns a list of human-readable issue strings; empty means clean."""
     root = root.resolve()
-    issues: list[str] = []
+    issues: list[str] = list(config.warnings)
 
     # --- _order.yml entries -------------------------------------------------
     for dir_path in [root] + [p for p in root.rglob("*") if p.is_dir()]:
