@@ -272,3 +272,28 @@ def test_horizontal_rule_later_in_body_is_not_frontmatter(tmp_path):
     page = _render(tmp_path, "# Title\n\n---\n\ntext\n\n---\n")
     assert page.title == "Title"
     assert "<hr" in page.content_html
+
+
+
+def test_title_comes_from_the_parsed_h1_not_a_regex(tmp_path):
+    # A `# comment` in a code block is not a heading.
+    page = _render(tmp_path, "Intro\n\n```bash\n# install it\npip install x\n```\n\n# Real Title\n")
+    assert page.title == "Real Title"
+    # Setext H1s count.
+    assert _render(tmp_path, "Setext Title\n============\n\ntext\n").title == "Setext Title"
+    # Inline markup is reduced to text; entities are decoded.
+    assert _render(tmp_path, "# The `foo` **bar** [link](x.md) & co\n").title == "The foo bar link & co"
+    # An H2 before the H1 is skipped.
+    assert _render(tmp_path, "## Sub\n\n# Main\n").title == "Main"
+    # No H1 at all -> humanized filename.
+    assert _render(tmp_path, "## only-h2\n").title == "Page"
+
+
+def test_next_button_label_uses_parsed_title(tmp_path):
+    (tmp_path / "a.md").write_text("# A\n", encoding="utf-8")
+    (tmp_path / "b.md").write_text("```sh\n# not this\n```\n\nB `Title`\n===\n", encoding="utf-8")
+    from mdwiki.config import WidgetHook
+
+    config = SiteConfig(widget_hooks=[WidgetHook(name="next-button", anchor="bottom", selector="*.md")])
+    html = WikiRenderer(tmp_path, config, None).render_relpath("a.md").content_html
+    assert 'label="B Title"' in html
