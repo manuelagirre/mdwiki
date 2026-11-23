@@ -4,13 +4,14 @@ item's backlog page)."""
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import quote
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 
 from .config import SiteConfig
-from .render import PageNotFound, WikiRenderer
+from .render import PageNotFound, WikiRenderer, relpath_to_url
 from .theme import DEFAULT_THEME_DIR, STATIC_DIR
 from .widgets import resolve_widget
 
@@ -85,6 +86,18 @@ def create_app(
     @app.get("/{url_path:path}")
     async def _page(request: Request, url_path: str):
         if renderer.page_exists(url_path):
+            # Relative links in a page resolve against the URL it's served
+            # at, so a page must only ever be served at its canonical URL:
+            # `dir/index.md` at `/dir/` (not `/dir`), `page.md` at `/page`
+            # (not `/page/`). Anything else redirects there - otherwise a
+            # `[next](lesson-2.md)` link on `/lessons/lesson-1/` would point
+            # at `/lessons/lesson-1/lesson-2` and 404.
+            canonical = relpath_to_url(renderer.resolve_url(url_path))
+            if "/" + url_path != canonical:
+                location = quote(canonical)
+                if request.url.query:
+                    location += "?" + request.url.query
+                return RedirectResponse(location, status_code=308)
             return _render_response(request, url_path)
         # No `.md` page here - fall back to a content-root file served raw,
         # as authored (e.g. a hand-written `.html` page or an image beside a
