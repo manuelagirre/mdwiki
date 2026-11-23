@@ -363,3 +363,13 @@ See `./example/` in this repo: a tiny site with a homepage using the
 `_order.yml`, and a `next-button` hook auto-injected at the bottom of every
 lesson page except the last. Run it with the quickstart command at the top
 of this guide.
+
+## Development
+
+```bash
+pip install -e ".[test]"
+pytest
+```
+
+CI (`.github/workflows/tests.yml`) runs the test suite on Python 3.11-3.13
+and checks that `./example` still passes `mdwiki validate`.
