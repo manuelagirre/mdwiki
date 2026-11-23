@@ -40,7 +40,9 @@ MD_EXTENSIONS = [
 ]
 MD_EXTENSION_CONFIGS = {
     "codehilite": {"guess_lang": False},
-    "toc": {"permalink": False},
+    # A "#" link after each heading (shown on hover, see app.css) so readers
+    # can copy a link straight to a section.
+    "toc": {"permalink": "#", "permalink_title": "Link to this section"},
 }
 
 # Opening `---` line, then everything up to the first closing `---` line.

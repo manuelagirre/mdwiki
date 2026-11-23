@@ -356,3 +356,9 @@ def test_head_requests_are_answered_like_get():
         assert res.content == b"", url
     assert client.head("/nope").status_code == 404
     assert client.head("/lessons", follow_redirects=False).status_code == 308
+
+
+def test_headings_get_section_permalinks_without_changing_titles(tmp_path):
+    page = _render(tmp_path, "# Main Title\n\n## Sub Section\n")
+    assert page.title == "Main Title"
+    assert '<a class="headerlink" href="#sub-section" title="Link to this section">#</a>' in page.content_html

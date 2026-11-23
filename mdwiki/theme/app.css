@@ -291,3 +291,17 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
     overflow-x: auto;
   }
 }
+
+/* Section permalinks: the "#" the toc extension appends to each heading,
+   shown while hovering the heading (or when focused by keyboard). */
+.headerlink {
+  margin-left: 0.3em;
+  color: #9e9e9e;
+  text-decoration: none;
+  opacity: 0;
+}
+
+:is(h1, h2, h3, h4, h5, h6):hover > .headerlink,
+.headerlink:focus {
+  opacity: 1;
+}
