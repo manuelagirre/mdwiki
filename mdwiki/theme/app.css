@@ -226,3 +226,38 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
   content: "/";
   color: #757575;
 }
+
+/* Search: the box in the nav, and the /_search results page. */
+.site-search {
+  margin-left: auto;
+}
+
+.site-search input,
+.mdwiki-search-form input {
+  font: inherit;
+  padding: 0.2em 0.6em;
+  border: 1px solid #ccc;
+  border-radius: 0.3em;
+}
+
+.mdwiki-search-form input {
+  width: min(24em, 70%);
+}
+
+.mdwiki-search-form button {
+  font: inherit;
+  padding: 0.2em 0.8em;
+}
+
+.mdwiki-search-results li {
+  margin-bottom: 1em;
+}
+
+.mdwiki-search-path {
+  color: #757575;
+  font-size: 0.85em;
+}
+
+.mdwiki-search-snippet {
+  margin: 0.2em 0 0;
+}

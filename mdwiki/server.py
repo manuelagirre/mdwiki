@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from .config import SiteConfig
 from .render import PageNotFound, WikiRenderer, relpath_to_url
 from .theme import DEFAULT_THEME_DIR, STATIC_DIR
+from .search import results_html, search
 from .widgets import resolve_widget
 
 _TEMPLATES_CACHE: dict[tuple[Path, ...], object] = {}
@@ -123,6 +124,12 @@ def create_app(
         if request.url.query:
             location += "?" + request.url.query
         return RedirectResponse(location, status_code=308)
+
+    @app.get("/_search")
+    async def _search(request: Request, q: str = ""):
+        hits = search(renderer, q)
+        title = f"Search: {q}" if q.strip() else "Search"
+        return _shell_response(request, title, results_html(q, hits))
 
     @app.get("/")
     async def _index(request: Request):

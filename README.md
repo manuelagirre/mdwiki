@@ -57,7 +57,8 @@ A `.md` page always wins its URL: raw files are only consulted when no
 and 404 like a missing page: `.md` sources themselves (`/lessons/loops.md`
 is not a URL - use `/lessons/loops`), `_order.yml` manifests, and anything
 under a path segment starting with `.` (e.g. `.git/`, `.wiki-manifest.json`).
-Paths under `/_assets/` and `/_widgets/` are reserved for mdwiki itself.
+Paths under `/_assets/` and `/_widgets/`, and `/_search`, are reserved for
+mdwiki itself.
 
 ### Cross-links between pages
 
@@ -77,6 +78,16 @@ Image `src` and other non-`.md` targets are never touched either - those
 files are served raw at their literal path (see "Plain HTML pages and other
 files" above), so a relative link like `[report](q3.html)` or
 `![chart](chart.png)` already resolves as written.
+
+## Search
+
+Every page of the default theme has a search box in the nav; it submits to
+`/_search?q=...`, which lists the pages containing *all* the query's words
+(case-insensitive, title or text), title matches first, each with a short
+highlighted snippet. No index to build and no JavaScript: pages are read
+fresh on each search, so results always match what's on disk. Dot-paths
+(`.git/`, ...) are never searched. A custom `page.html` can add the same
+box with `<form action="/_search"><input name="q"></form>`.
 
 ## Site config (`mdwiki.yml`)
 

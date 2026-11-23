@@ -340,6 +340,11 @@ class WikiRenderer:
         # the frontmatter fence is still at the very start of the text.
         return _parse_frontmatter(path.read_text(encoding="utf-8-sig"))
 
+    def page_source(self, relpath: str) -> tuple[str, str]:
+        """(title, markdown body without frontmatter) of a `.md` page."""
+        frontmatter, body = self._read(relpath)
+        return _page_title(frontmatter, body, relpath), body
+
     def _title_for(self, relpath: str) -> str:
         frontmatter, body = self._read(relpath)
         return _page_title(frontmatter, body, relpath)
