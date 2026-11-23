@@ -66,6 +66,16 @@ class PageNotFound(Exception):
     which case it was."""
 
 
+def read_page_text(path: Path) -> str:
+    """A `.md` page's text. utf-8-sig drops a leading BOM (as some Windows
+    editors write) so a frontmatter fence is still at the very start; bytes
+    that aren't valid UTF-8 (a Latin-1 file, say) become U+FFFD instead of
+    failing the whole page - `mdwiki validate` reports such files. Line
+    endings are normalized to `\n` (CRLF files), as read_text() would."""
+    text = path.read_bytes().decode("utf-8-sig", errors="replace")
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def _load_frontmatter(text: str) -> tuple[dict, str, list[str]]:
     """(usable frontmatter, body, problems). Never raises: a typo in page
     metadata shouldn't take the whole page down with a 500. Malformed YAML
@@ -381,9 +391,7 @@ class WikiRenderer:
         path = self._safe_join(relpath)
         if not path.is_file():
             raise PageNotFound(relpath)
-        # utf-8-sig: drop a leading BOM (as some Windows editors write) so
-        # the frontmatter fence is still at the very start of the text.
-        return _parse_frontmatter(path.read_text(encoding="utf-8-sig"))
+        return _parse_frontmatter(read_page_text(path))
 
     def page_source(self, relpath: str) -> tuple[str, str]:
         """(title, markdown body without frontmatter) of a `.md` page."""

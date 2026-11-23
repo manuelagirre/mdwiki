@@ -13,7 +13,7 @@ from urllib.parse import unquote, urljoin, urlsplit
 from .config import SiteConfig
 from .ordering import ORDER_FILENAME, Page, orderable_names, read_order_file
 from .paths import is_hidden
-from .render import PageNotFound, RenderedPage, WikiRenderer, frontmatter_problems, relpath_to_url
+from .render import PageNotFound, RenderedPage, WikiRenderer, frontmatter_problems, read_page_text, relpath_to_url
 from .widgets import resolve_widget
 
 _HREF_RE = re.compile(r'<a\b[^>]*\bhref="([^"]*)"')
@@ -104,7 +104,11 @@ def validate(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[s
     renderer = _CachingRenderer(root, config, widgets_dir)
     for md_path in _all_md_files(root):
         rel = md_path.relative_to(root)
-        for problem in frontmatter_problems(md_path.read_text(encoding="utf-8-sig")):
+        try:
+            md_path.read_bytes().decode("utf-8-sig")
+        except UnicodeDecodeError as exc:
+            issues.append(f"{rel}: not valid UTF-8 (byte {exc.start}); the page shows replacement characters there")
+        for problem in frontmatter_problems(read_page_text(md_path)):
             issues.append(f"{rel}: {problem}")
         # Only macros the renderer actually expands - a `{{ widget: x }}`
         # shown inside code is an example of the syntax, not a reference.

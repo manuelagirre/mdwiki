@@ -403,3 +403,15 @@ def test_watch_mode_is_off_by_default(tmp_path):
     client = TestClient(create_app(content_dir=tmp_path))
     assert "/_watch" not in client.get("/").text
     assert client.get("/_watch").status_code == 404
+
+
+def test_non_utf8_page_renders_and_validate_reports_it(tmp_path):
+    (tmp_path / "index.md").write_text("# Home\n\n[c](cafe.md)\n", encoding="utf-8")
+    (tmp_path / "cafe.md").write_bytes("# Café notes\r\n\r\nnaïve\r\n".encode("latin-1"))
+    client = TestClient(create_app(content_dir=tmp_path))
+    res = client.get("/cafe")
+    assert res.status_code == 200
+    assert "Caf� notes" in res.text
+
+    issues = validate(tmp_path, SiteConfig(), None)
+    assert issues == ["cafe.md: not valid UTF-8 (byte 5); the page shows replacement characters there"]
