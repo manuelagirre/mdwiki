@@ -107,23 +107,68 @@ files are served raw at their literal path (see "Plain HTML pages and other
 files" above), so a relative link like `[report](q3.html)` or
 `![chart](chart.png)` already resolves as written.
 
-## Dark mode
+## Writing pages
 
-The default theme follows the reader's OS light/dark setting - page,
-code highlighting, mermaid diagrams and the standard widgets. Its colours
-are CSS custom properties on `:root` (`--mdwiki-bg`, `--mdwiki-accent`,
-...), so a theme's `app.css` can retune either palette without copying the
-whole stylesheet.
+Pages are [Python-Markdown](https://python-markdown.github.io/) with these
+extensions switched on, beyond plain markdown:
 
-## Search
+| Syntax | What it gives you |
+|---|---|
+| `\| a \| b \|` rows | tables |
+| ```` ```python ```` fences | syntax-highlighted code (Pygments) |
+| `Text[^1]` + `[^1]: note` | footnotes |
+| `!!! note "Title"` + indented body | admonition boxes (`note`, `warning`, ...) |
+| `Term` + `:   definition` | definition lists |
+| `[TOC]` on its own line | a table of contents of the page's headings |
+| `## Heading {: #my-id }` | a custom heading id (attribute lists) |
+| `<div markdown="1">...</div>` | markdown inside raw HTML blocks |
 
-Every page of the default theme has a search box in the nav; it submits to
-`/_search?q=...`, which lists the pages containing *all* the query's words
-(case-insensitive, title or text), title matches first, each with a short
-highlighted snippet. No index to build and no JavaScript: pages are read
-fresh on each search, so results always match what's on disk. Dot-paths
-(`.git/`, ...) are never searched. A custom `page.html` can add the same
-box with `<form action="/_search"><input name="q"></form>`.
+Every heading gets an `id` (for `page.md#heading` links) and a `#`
+permalink shown on hover. Raw HTML is passed through as written - mdwiki
+assumes its authors are trusted.
+
+## Mermaid diagrams
+
+Plain ```` ```mermaid ```` fenced code blocks render as diagrams by default -
+no widget, no macro, just the fence:
+
+````markdown
+```mermaid
+sequenceDiagram
+  A->>B: hi
+```
+````
+
+Rendered via [mermaid.js](https://mermaid.js.org/) loaded from a pinned CDN
+version (`mermaid@11.17.2`), included only on pages that actually contain a
+diagram - not paid for on every page load. Any other fenced-code language
+(```` ```python ````, etc.) still goes through the normal `codehilite`
+syntax highlighting untouched; only the literal `mermaid` language tag is
+intercepted.
+
+## Frontmatter
+
+Optional YAML frontmatter at the top of any `.md` file:
+
+```yaml
+---
+title: Lesson 3 - Loops
+back_link:
+  href: ../lesson-2
+  label: Back to Lesson 2
+widgets:
+  exclude: [next-button]   # opt this page out of a matching hook widget
+---
+```
+
+- `title` (optional): overrides the page's `<title>`/heading. Default falls
+  back to the file's own `# H1`, then the filename, humanized.
+- `back_link` (optional `href` + `label`): rendered as a plain `<a>` in the
+  page shell, in place of the automatic breadcrumbs (`Wiki › Guides ›`)
+  that nested pages otherwise get. This is core-rendered, not a widget - static markup from data
+  you supplied, no JS/data-fetch involved.
+- `widgets.exclude` (optional list of names): skips specific hook-injected
+  widgets on this page, even though their `selector` would otherwise match.
 
 ## Site config (`mdwiki.yml`)
 
@@ -168,29 +213,23 @@ within one path segment only (it does not cross `/`) - same semantics as
 `pathlib.PurePath.match()`. So `lessons/*` matches `lessons/lesson-1.md`
 but not `lessons/lesson-1/exercises/ex-1.md`.
 
-## Frontmatter
+## Search
 
-Optional YAML frontmatter at the top of any `.md` file:
+Every page of the default theme has a search box in the nav; it submits to
+`/_search?q=...`, which lists the pages containing *all* the query's words
+(case-insensitive, title or text), title matches first, each with a short
+highlighted snippet. No index to build and no JavaScript: pages are read
+fresh on each search, so results always match what's on disk. Dot-paths
+(`.git/`, ...) are never searched. A custom `page.html` can add the same
+box with `<form action="/_search"><input name="q"></form>`.
 
-```yaml
----
-title: Lesson 3 - Loops
-back_link:
-  href: ../lesson-2
-  label: Back to Lesson 2
-widgets:
-  exclude: [next-button]   # opt this page out of a matching hook widget
----
-```
+## Dark mode
 
-- `title` (optional): overrides the page's `<title>`/heading. Default falls
-  back to the file's own `# H1`, then the filename, humanized.
-- `back_link` (optional `href` + `label`): rendered as a plain `<a>` in the
-  page shell, in place of the automatic breadcrumbs (`Wiki › Guides ›`)
-  that nested pages otherwise get. This is core-rendered, not a widget - static markup from data
-  you supplied, no JS/data-fetch involved.
-- `widgets.exclude` (optional list of names): skips specific hook-injected
-  widgets on this page, even though their `selector` would otherwise match.
+The default theme follows the reader's OS light/dark setting - page,
+code highlighting, mermaid diagrams and the standard widgets. Its colours
+are CSS custom properties on `:root` (`--mdwiki-bg`, `--mdwiki-accent`,
+...), so a theme's `app.css` can retune either palette without copying the
+whole stylesheet.
 
 ## Page ordering (`_order.yml`)
 
@@ -339,45 +378,6 @@ immediately by name via either mechanism above:
 
 A host can shadow either by providing its own `./widgets/toast/` or
 `./widgets/next-button/` - your own copy is checked before the standard one.
-
-## Writing pages
-
-Pages are [Python-Markdown](https://python-markdown.github.io/) with these
-extensions switched on, beyond plain markdown:
-
-| Syntax | What it gives you |
-|---|---|
-| `\| a \| b \|` rows | tables |
-| ```` ```python ```` fences | syntax-highlighted code (Pygments) |
-| `Text[^1]` + `[^1]: note` | footnotes |
-| `!!! note "Title"` + indented body | admonition boxes (`note`, `warning`, ...) |
-| `Term` + `:   definition` | definition lists |
-| `[TOC]` on its own line | a table of contents of the page's headings |
-| `## Heading {: #my-id }` | a custom heading id (attribute lists) |
-| `<div markdown="1">...</div>` | markdown inside raw HTML blocks |
-
-Every heading gets an `id` (for `page.md#heading` links) and a `#`
-permalink shown on hover. Raw HTML is passed through as written - mdwiki
-assumes its authors are trusted.
-
-## Mermaid diagrams
-
-Plain ```` ```mermaid ```` fenced code blocks render as diagrams by default -
-no widget, no macro, just the fence:
-
-````markdown
-```mermaid
-sequenceDiagram
-  A->>B: hi
-```
-````
-
-Rendered via [mermaid.js](https://mermaid.js.org/) loaded from a pinned CDN
-version (`mermaid@11.17.2`), included only on pages that actually contain a
-diagram - not paid for on every page load. Any other fenced-code language
-(```` ```python ````, etc.) still goes through the normal `codehilite`
-syntax highlighting untouched; only the literal `mermaid` language tag is
-intercepted.
 
 ## Backend calls
 
