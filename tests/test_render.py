@@ -150,3 +150,9 @@ def test_validate_catches_dangling_link_and_broken_anchor(tmp_path):
     assert any("nowhere" in i and "does not resolve" in i for i in issues)
     assert any("#nope" in i for i in issues)
     assert not any("hello" in i.lower() and "anchor" in i.lower() for i in issues)
+
+
+def test_nul_byte_in_url_is_404_not_500():
+    client = _client()
+    for url in ("/%00", "/lessons/a%00b", "/lessons%00/lesson-1"):
+        assert client.get(url).status_code == 404, url

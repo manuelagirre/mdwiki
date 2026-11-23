@@ -143,6 +143,10 @@ class WikiRenderer:
         self.widgets_dir = widgets_dir
 
     def _safe_join(self, relpath: str) -> Path:
+        # A NUL byte makes the OS path calls below raise ValueError (a 500)
+        # instead of simply missing - treat it as the 404 it should be.
+        if "\x00" in relpath:
+            raise PageNotFound(f"embedded NUL: {relpath!r}")
         candidate = self.root.joinpath(*relpath.split("/")).resolve()
         if not candidate.is_relative_to(self.root):
             raise PageNotFound(f"escapes root: {relpath!r}")
