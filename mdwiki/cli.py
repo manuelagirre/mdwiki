@@ -4,6 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from . import __version__
 from .config import SiteConfig
 from .ordering import OrderError, append, insert_after, insert_before, remove
 from .server import serve
@@ -47,6 +48,7 @@ def _cmd_order(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="mdwiki")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_serve = sub.add_parser("serve", help="Serve a directory of markdown files as a wiki.")
@@ -89,7 +91,19 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _check_paths(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """Fail fast on a mistyped path instead of serving an empty site or
+    reporting a nonexistent one as "clean"."""
+    if getattr(args, "dir", None) is not None and not Path(args.dir).is_dir():
+        parser.error(f"--dir {args.dir}: not a directory")
+    if getattr(args, "config", None) and not Path(args.config).is_file():
+        parser.error(f"--config {args.config}: no such file")
+    if getattr(args, "widgets", None) and not Path(args.widgets).is_dir():
+        parser.error(f"--widgets {args.widgets}: not a directory")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
+    _check_paths(parser, args)
     sys.exit(args.func(args))
