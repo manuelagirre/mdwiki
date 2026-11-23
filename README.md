@@ -337,6 +337,26 @@ immediately by name via either mechanism above:
 A host can shadow either by providing its own `./widgets/toast/` or
 `./widgets/next-button/` - your own copy is checked before the standard one.
 
+## Writing pages
+
+Pages are [Python-Markdown](https://python-markdown.github.io/) with these
+extensions switched on, beyond plain markdown:
+
+| Syntax | What it gives you |
+|---|---|
+| `\| a \| b \|` rows | tables |
+| ```` ```python ```` fences | syntax-highlighted code (Pygments) |
+| `Text[^1]` + `[^1]: note` | footnotes |
+| `!!! note "Title"` + indented body | admonition boxes (`note`, `warning`, ...) |
+| `Term` + `:   definition` | definition lists |
+| `[TOC]` on its own line | a table of contents of the page's headings |
+| `## Heading {: #my-id }` | a custom heading id (attribute lists) |
+| `<div markdown="1">...</div>` | markdown inside raw HTML blocks |
+
+Every heading gets an `id` (for `page.md#heading` links) and a `#`
+permalink shown on hover. Raw HTML is passed through as written - mdwiki
+assumes its authors are trusted.
+
 ## Mermaid diagrams
 
 Plain ```` ```mermaid ```` fenced code blocks render as diagrams by default -
