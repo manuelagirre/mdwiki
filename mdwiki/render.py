@@ -14,6 +14,7 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 
 import markdown
+from markdown.extensions.toc import slugify_unicode
 import yaml
 
 from .config import SiteConfig
@@ -43,7 +44,13 @@ MD_EXTENSION_CONFIGS = {
     "codehilite": {"guess_lang": False},
     # A "#" link after each heading (shown on hover, see app.css) so readers
     # can copy a link straight to a section.
-    "toc": {"permalink": "#", "permalink_title": "Link to this section"},
+    #
+    # slugify_unicode keeps non-ASCII letters in heading ids ("## Привіт" ->
+    # id="привіт", "## Café" -> "café"), as GitHub does - the ASCII-only
+    # default turned such headings into "_1", "_2", so `page.md#привіт`
+    # links that work on GitHub didn't work here. ASCII headings get the
+    # same ids as before.
+    "toc": {"permalink": "#", "permalink_title": "Link to this section", "slugify": slugify_unicode},
 }
 
 # Opening `---` line, then everything up to the first closing `---` line.

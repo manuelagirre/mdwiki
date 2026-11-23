@@ -204,7 +204,7 @@ def _check_links(root: Path, renderer: WikiRenderer) -> list[str]:
         # Decode like the server does: `My%20Page.md` / `caf%C3%A9.md` (the
         # GitHub-safe spellings) name files with literal spaces/non-ASCII.
         target_url = unquote(parsed.path) if parsed.path else base_url
-        fragment = parsed.fragment or None
+        fragment = unquote(parsed.fragment) or None  # browsers match ids decoded
 
         target_relpath, resolves = _resolve_target(target_url)
         if not resolves:

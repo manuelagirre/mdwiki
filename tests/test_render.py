@@ -415,3 +415,15 @@ def test_non_utf8_page_renders_and_validate_reports_it(tmp_path):
 
     issues = validate(tmp_path, SiteConfig(), None)
     assert issues == ["cafe.md: not valid UTF-8 (byte 5); the page shows replacement characters there"]
+
+
+def test_non_ascii_headings_get_unicode_ids_and_links_to_them_validate(tmp_path):
+    (tmp_path / "a.md").write_text("# Привіт світ\n\n## Café au lait\n\n## Plain Heading\n", encoding="utf-8")
+    (tmp_path / "b.md").write_text(
+        "# B\n\n[1](a.md#привіт-світ) [2](a.md#%D0%BF%D1%80%D0%B8%D0%B2%D1%96%D1%82-%D1%81%D0%B2%D1%96%D1%82)"
+        " [3](a.md#café-au-lait) [4](a.md#plain-heading)\n",
+        encoding="utf-8",
+    )
+    html = WikiRenderer(tmp_path, SiteConfig(), None).render_relpath("a.md").content_html
+    assert re.findall(r'<h\d id="([^"]*)"', html) == ["привіт-світ", "café-au-lait", "plain-heading"]
+    assert validate(tmp_path, SiteConfig(), None) == []
