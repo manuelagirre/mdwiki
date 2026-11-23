@@ -105,7 +105,7 @@ def search(renderer: WikiRenderer, query: str) -> list[SearchHit]:
             )
         )
     hits.sort(key=lambda h: h.score)
-    return hits[:MAX_RESULTS]
+    return hits
 
 
 def results_html(query: str, hits: list[SearchHit]) -> str:
@@ -123,10 +123,10 @@ def results_html(query: str, hits: list[SearchHit]) -> str:
         parts.append(f"<p>No pages match <strong>{escape(query)}</strong>.</p>")
         return "\n".join(parts)
     noun = "page" if len(hits) == 1 else "pages"
-    more = "+" if len(hits) == MAX_RESULTS else ""
-    parts.append(f"<p>{len(hits)}{more} {noun} match <strong>{escape(query)}</strong>.</p>")
+    shown = f" (showing the first {MAX_RESULTS})" if len(hits) > MAX_RESULTS else ""
+    parts.append(f"<p>{len(hits)} {noun} match <strong>{escape(query)}</strong>{shown}.</p>")
     parts.append('<ol class="mdwiki-search-results">')
-    for hit in hits:
+    for hit in hits[:MAX_RESULTS]:
         parts.append(
             f'<li><a href="{escape(quote(hit.url), quote=True)}">{escape(hit.title)}</a>'
             f'<div class="mdwiki-search-path">{escape(hit.url)}</div>'

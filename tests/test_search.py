@@ -59,3 +59,18 @@ def test_identifiers_with_markdown_punctuation_are_findable(tmp_path):
     renderer = WikiRenderer(tmp_path, SiteConfig(), None)
     [hit] = search(renderer, "widget_markup")
     assert "---" not in hit.snippet_html
+
+
+def test_result_count_is_exact_and_list_is_capped(tmp_path):
+    from mdwiki.search import MAX_RESULTS, results_html
+
+    for i in range(MAX_RESULTS + 3):
+        (tmp_path / f"p{i:03}.md").write_text(f"# P{i}\n\nneedle\n", encoding="utf-8")
+    hits = search(WikiRenderer(tmp_path, SiteConfig(), None), "needle")
+    html = results_html("needle", hits)
+    assert f"{MAX_RESULTS + 3} pages match" in html
+    assert f"showing the first {MAX_RESULTS}" in html
+    assert html.count("<li>") == MAX_RESULTS
+
+    html = results_html("needle", hits[:MAX_RESULTS])
+    assert f"{MAX_RESULTS} pages match" in html and "showing" not in html
