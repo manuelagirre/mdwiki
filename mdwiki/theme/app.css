@@ -14,7 +14,9 @@ body {
 
 .site-nav {
   display: flex;
-  gap: 1.5em;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4em 1.5em;
   padding: 0.8em 1.5em;
   border-bottom: 1px solid #e0e0e0;
   background: #fafafa;
@@ -37,6 +39,7 @@ body {
 }
 
 .site-content {
+  overflow-wrap: break-word;
   max-width: 46em;
   margin: 0 auto;
   padding: 1.5em 1.5em 4em;
@@ -260,4 +263,31 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 
 .mdwiki-search-snippet {
   margin: 0.2em 0 0;
+}
+
+/* Phones: nav links wrap instead of overflowing, the search box gets its
+   own row, and wide tables scroll inside themselves rather than dragging
+   the whole page sideways. */
+@media (max-width: 40em) {
+  .site-nav {
+    padding: 0.6em 1em;
+  }
+
+  .site-search {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+
+  .site-search input {
+    width: 100%;
+  }
+
+  .site-content {
+    padding: 1em 1em 3em;
+  }
+
+  .site-content table {
+    display: block;
+    overflow-x: auto;
+  }
 }
