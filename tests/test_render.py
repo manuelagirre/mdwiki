@@ -156,3 +156,29 @@ def test_nul_byte_in_url_is_404_not_500():
     client = _client()
     for url in ("/%00", "/lessons/a%00b", "/lessons%00/lesson-1"):
         assert client.get(url).status_code == 404, url
+
+
+def test_non_canonical_page_urls_redirect_to_canonical():
+    """Relative links resolve against the served URL, so a page is only
+    served at its canonical form - anything else 308s there."""
+    client = _client()
+    cases = {
+        "/lessons": "/lessons/",  # dir/index.md wants the trailing slash
+        "/lessons/lesson-1/": "/lessons/lesson-1",  # page.md must not have one
+        "/lessons/lesson-1/?ref=nav": "/lessons/lesson-1?ref=nav",
+    }
+    for url, location in cases.items():
+        res = client.get(url, follow_redirects=False)
+        assert res.status_code == 308, url
+        assert res.headers["location"] == location, url
+    for url in ("/", "/lessons/", "/lessons/lesson-1"):
+        assert client.get(url, follow_redirects=False).status_code == 200, url
+
+
+def test_canonical_non_ascii_page_url_is_not_redirected(tmp_path):
+    (tmp_path / "café.md").write_text("# Café\n", encoding="utf-8")
+    client = TestClient(create_app(content_dir=tmp_path))
+    assert client.get("/caf%C3%A9", follow_redirects=False).status_code == 200
+    res = client.get("/caf%C3%A9/", follow_redirects=False)
+    assert res.status_code == 308
+    assert res.headers["location"] == "/caf%C3%A9"
