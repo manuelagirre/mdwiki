@@ -25,22 +25,45 @@ from html import escape
 from markdown.extensions import Extension
 from markdown.preprocessors import Preprocessor
 
-_FENCE_RE = re.compile(
-    r"^(?P<fence>`{3,}|~{3,}) *mermaid *\n(?P<code>.*?)\n(?P=fence) *$",
-    re.DOTALL | re.MULTILINE,
-)
+_OPEN_RE = re.compile(r"^(?P<fence>`{3,}|~{3,})(?P<info>.*)$")
+_MERMAID_INFO_RE = re.compile(r"^ *mermaid *$")
 
 
 class _MermaidPreprocessor(Preprocessor):
+    """Walks the document fence by fence rather than regex-matching
+    ```mermaid anywhere: a mermaid fence that is itself *content* of an
+    outer code block (e.g. a ````markdown block documenting the syntax)
+    must stay literal code, not become a live diagram. Closing fences
+    match the opener exactly, as in Python-Markdown's fenced_code."""
+
     def run(self, lines: list[str]) -> list[str]:
-        text = "\n".join(lines)
-
-        def _sub(m: re.Match) -> str:
-            self.md.mdwiki_has_mermaid = True
-            html = f'<pre class="mermaid">{escape(m.group("code"))}</pre>'
-            return self.md.htmlStash.store(html)
-
-        return _FENCE_RE.sub(_sub, text).split("\n")
+        out: list[str] = []
+        i = 0
+        while i < len(lines):
+            m = _OPEN_RE.match(lines[i])
+            if not m:
+                out.append(lines[i])
+                i += 1
+                continue
+            fence = m.group("fence")
+            close = next(
+                (j for j in range(i + 1, len(lines)) if lines[j].rstrip(" ") == fence),
+                None,
+            )
+            if close is None:  # unterminated - not a fence, leave as text
+                out.append(lines[i])
+                i += 1
+                continue
+            if _MERMAID_INFO_RE.match(m.group("info")):
+                self.md.mdwiki_has_mermaid = True
+                code = "\n".join(lines[i + 1 : close])
+                # Blank lines around the placeholder (as fenced_code does) so a
+                # fence right under a paragraph line isn't swallowed into <p>.
+                out.extend(["", self.md.htmlStash.store(f'<pre class="mermaid">{escape(code)}</pre>'), ""])
+            else:
+                out.extend(lines[i : close + 1])  # someone else's block: untouched
+            i = close + 1
+        return out
 
 
 class MermaidExtension(Extension):
