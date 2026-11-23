@@ -68,3 +68,29 @@ def test_mermaid_diagram_with_parens_and_quotes_round_trips(tmp_path):
 
     assert "&quot;handleFoo(bar)&quot;" in page.content_html
     assert "User-&gt;&gt;SafeAlias: click" in page.content_html
+
+
+def _render(tmp_path, text):
+    (tmp_path / "a.md").write_text(text, encoding="utf-8")
+    return WikiRenderer(tmp_path, SiteConfig(), None).render_relpath("a.md")
+
+
+def test_mermaid_fence_inside_an_outer_code_block_stays_literal(tmp_path):
+    """A ````markdown block *documenting* mermaid syntax must show the
+    source, not render a diagram inside a code block."""
+    page = _render(tmp_path, "# A\n\n````markdown\n```mermaid\ngraph TD; A-->B\n```\n````\n")
+    assert page.has_mermaid is False
+    assert 'class="mermaid"' not in page.content_html
+    assert "```mermaid" in page.content_html
+
+
+def test_mermaid_fence_directly_under_a_paragraph_is_not_wrapped_in_p(tmp_path):
+    page = _render(tmp_path, "Intro line\n```mermaid\ngraph TD; A-->B\n```\nafter\n")
+    assert "<p>Intro line</p>" in page.content_html
+    assert '<p>Intro line\n<pre' not in page.content_html
+    assert '<pre class="mermaid">' in page.content_html
+
+
+def test_tilde_mermaid_fence_and_unterminated_fence(tmp_path):
+    assert _render(tmp_path, "~~~mermaid\ngraph TD; A-->B\n~~~\n").has_mermaid is True
+    assert _render(tmp_path, "```mermaid\nno closing fence\n").has_mermaid is False
