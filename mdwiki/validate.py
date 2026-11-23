@@ -146,6 +146,8 @@ def _check_links(root: Path, renderer: WikiRenderer) -> list[str]:
         raw non-HTML file; whether the URL resolves at all)."""
         if renderer.page_exists(url):
             return renderer.resolve_url(url), True
+        if renderer.listing_dir(url) is not None:
+            return None, True  # generated directory listing
         try:
             relpath = renderer.resolve_file(url)
         except PageNotFound:

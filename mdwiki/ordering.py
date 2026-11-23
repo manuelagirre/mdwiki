@@ -30,7 +30,7 @@ def read_order_file(dir_path: Path) -> list[str]:
 _read_order_file = read_order_file  # internal alias, kept for brevity below
 
 
-def _has_pages(dir_path: Path) -> bool:
+def has_pages(dir_path: Path) -> bool:
     """Whether a directory holds at least one `.md` page anywhere below it
     (not counting dot-paths, which are never part of the site's pages)."""
     for child in dir_path.iterdir():
@@ -38,7 +38,7 @@ def _has_pages(dir_path: Path) -> bool:
             continue
         if child.is_file() and child.suffix == ".md":
             return True
-        if child.is_dir() and _has_pages(child):
+        if child.is_dir() and has_pages(child):
             return True
     return False
 
@@ -53,7 +53,7 @@ def orderable_names(dir_path: Path) -> set[str]:
         p.name
         for p in dir_path.iterdir()
         if not p.name.startswith(".")
-        and ((p.is_file() and p.suffix == ".md") or (p.is_dir() and _has_pages(p)))
+        and ((p.is_file() and p.suffix == ".md") or (p.is_dir() and has_pages(p)))
     }
 
 

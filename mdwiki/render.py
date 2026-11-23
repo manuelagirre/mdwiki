@@ -11,6 +11,7 @@ import re
 from dataclasses import dataclass, field
 from html import escape
 from pathlib import Path
+from urllib.parse import quote
 
 import markdown
 import yaml
@@ -18,7 +19,7 @@ import yaml
 from .config import SiteConfig
 from .link_rewrite import InternalLinkExtension
 from .mermaid import MermaidExtension
-from .ordering import adjacent
+from .ordering import adjacent, has_pages, ordered_entries
 from .widgets import widget_markup
 
 # `extra` bundles attr_list/def_list/fenced_code/footnotes/md_in_html/tables -
@@ -133,7 +134,15 @@ def _page_title(frontmatter: dict, body: str, relpath: str, toc_tokens: list[dic
     if h1:
         return h1
     stem = Path(relpath).stem if Path(relpath).name != "index.md" else Path(relpath).parent.name
-    return stem.replace("-", " ").replace("_", " ").title()
+    return _humanize(stem)
+
+
+def _slug(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+
+def _humanize(name: str) -> str:
+    return name.replace("-", " ").replace("_", " ").title()
 
 
 @dataclass(frozen=True)
@@ -277,6 +286,51 @@ class WikiRenderer:
             return True
         except PageNotFound:
             return False
+
+    def listing_dir(self, url_path: str) -> str | None:
+        """The directory relpath ('' for the root) to show a generated
+        listing for at `url_path`, or None. Only consulted once no page
+        (`<path>.md`, `<path>/index.md`, the `index:` override) matched, so
+        an authored index always wins. The root always gets one (even an
+        empty wiki shouldn't greet you with a 404); other directories only
+        when they hold pages - an `images/` folder still 404s."""
+        rel = url_path.strip("/")
+        if not rel:
+            return ""
+        if any(part.startswith(".") or _unsafe_segment(part) for part in rel.split("/")):
+            return None
+        path = self._safe_join(rel)
+        if path.is_dir() and has_pages(path):
+            return rel
+        return None
+
+    def render_listing(self, dir_relpath: str) -> RenderedPage:
+        """A generated index for a directory without its own `index.md`:
+        its pages and page-holding subdirectories, in `_order.yml` order,
+        each linked by title. Links are relative to the listing's
+        canonical URL (`/dir/`)."""
+        dir_path = self._safe_join(dir_relpath) if dir_relpath else self.root
+        prefix = f"{dir_relpath}/" if dir_relpath else ""
+        title = _humanize(Path(dir_relpath).name) if dir_relpath else self.config.title
+
+        items: list[str] = []
+        for name in ordered_entries(dir_path):
+            child = dir_path / name
+            if child.is_dir():
+                index = f"{prefix}{name}/index.md"
+                label = self._title_for(index) if (child / "index.md").is_file() else _humanize(name)
+                href, css = quote(name) + "/", "mdwiki-listing-dir"
+            else:
+                label = self._title_for(prefix + name)
+                href, css = quote(name[: -len(".md")]), "mdwiki-listing-page"
+            items.append(f'<li class="{css}"><a href="{escape(href)}">{escape(label, quote=False)}</a></li>')
+
+        body = "\n".join(items) if items else "<li><em>No pages yet.</em></li>"
+        content_html = (
+            f'<h1 id="{escape(_slug(title))}">{escape(title, quote=False)}</h1>\n'
+            f'<ul class="mdwiki-listing">\n{body}\n</ul>'
+        )
+        return RenderedPage(title=title, content_html=content_html, back_link=None)
 
     def _read(self, relpath: str) -> tuple[dict, str]:
         path = self._safe_join(relpath)

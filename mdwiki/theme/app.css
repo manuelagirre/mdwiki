@@ -220,3 +220,9 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 .codehilite .vi { color: #19177C } /* Name.Variable.Instance */
 .codehilite .vm { color: #19177C } /* Name.Variable.Magic */
 .codehilite .il { color: #666 } /* Literal.Number.Integer.Long */
+
+/* Generated listing for a directory without its own index.md. */
+.mdwiki-listing-dir > a::after {
+  content: "/";
+  color: #757575;
+}

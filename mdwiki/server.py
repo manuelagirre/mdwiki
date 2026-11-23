@@ -118,28 +118,41 @@ def create_app(
             has_mermaid=page.has_mermaid,
         )
 
+    def _redirect_to(request: Request, canonical: str) -> RedirectResponse:
+        location = quote(canonical)
+        if request.url.query:
+            location += "?" + request.url.query
+        return RedirectResponse(location, status_code=308)
+
     @app.get("/")
     async def _index(request: Request):
-        return _render_response(request, "")
+        return await _page(request, "")
 
     @app.get("/{url_path:path}")
     async def _page(request: Request, url_path: str):
+        # Relative links in a page resolve against the URL it's served at,
+        # so a page must only ever be served at its canonical URL:
+        # `dir/index.md` at `/dir/` (not `/dir`), `page.md` at `/page` (not
+        # `/page/`). Anything else redirects there - otherwise a
+        # `[next](lesson-2.md)` link on `/lessons/lesson-1/` would point at
+        # `/lessons/lesson-1/lesson-2` and 404.
         if renderer.page_exists(url_path):
-            # Relative links in a page resolve against the URL it's served
-            # at, so a page must only ever be served at its canonical URL:
-            # `dir/index.md` at `/dir/` (not `/dir`), `page.md` at `/page`
-            # (not `/page/`). Anything else redirects there - otherwise a
-            # `[next](lesson-2.md)` link on `/lessons/lesson-1/` would point
-            # at `/lessons/lesson-1/lesson-2` and 404.
-            canonical = relpath_to_url(renderer.resolve_url(url_path))
+            # `/` is always canonical for whatever serves the root (index.md
+            # or the `index:` override, which is served *at* `/`).
+            canonical = relpath_to_url(renderer.resolve_url(url_path)) if url_path else "/"
             if "/" + url_path != canonical:
-                location = quote(canonical)
-                if request.url.query:
-                    location += "?" + request.url.query
-                return RedirectResponse(location, status_code=308)
+                return _redirect_to(request, canonical)
             return _render_response(request, url_path)
-        # No `.md` page here - fall back to a content-root file served raw,
-        # as authored (e.g. a hand-written `.html` page or an image beside a
+        # A directory without its own index page gets a generated listing.
+        dir_relpath = renderer.listing_dir(url_path)
+        if dir_relpath is not None:
+            canonical = f"/{dir_relpath}/" if dir_relpath else "/"
+            if "/" + url_path != canonical:
+                return _redirect_to(request, canonical)
+            page = renderer.render_listing(dir_relpath)
+            return _shell_response(request, page.title, page.content_html)
+        # No page here - fall back to a content-root file served raw, as
+        # authored (e.g. a hand-written `.html` page or an image beside a
         # page). Still a plain 404 if that misses too.
         relpath = renderer.resolve_file(url_path)
         return FileResponse(renderer.file_path(relpath))

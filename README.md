@@ -32,6 +32,12 @@ Any `.md` file under the content root is served 1:1 by its relative path:
 folds to `/dir/`. There is no fixed URL scheme to configure - whatever
 files exist define the URLs that exist.
 
+A directory with no `index.md` of its own (including the content root,
+when there's no `index.md` or `index:`) gets a generated listing at
+`/dir/` instead of a 404: its pages and page-holding sub-folders, in
+`_order.yml` order, each linked by its title. Write an `index.md` to
+replace it. Folders without any pages (e.g. `images/`) still 404.
+
 Path-traversal attempts and missing pages both 404 identically (never a
 400 that would hint which case it was). The 404 is a "Page not found" page
 in the site's own theme, with the nav, so a reader who followed a stale
