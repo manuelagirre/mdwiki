@@ -73,7 +73,7 @@ def validate(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[s
 
     # --- widget references ---------------------------------------------------
     for md_path in _all_md_files(root):
-        text = md_path.read_text(encoding="utf-8")
+        text = md_path.read_text(encoding="utf-8-sig")
         for m in WIDGET_MACRO_RE.finditer(text):
             name = m.group(1)
             if resolve_widget(name, widgets_dir) is None:

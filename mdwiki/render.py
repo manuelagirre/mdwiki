@@ -40,7 +40,9 @@ MD_EXTENSION_CONFIGS = {
     "toc": {"permalink": False},
 }
 
-_FRONTMATTER_RE = re.compile(r"\A---\n(.*?\n)---\n", re.DOTALL)
+# Opening `---` line, then everything up to the first closing `---` line.
+# The body may be empty (`---\n---`) and the closing fence may end the file.
+_FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.*?)^---[ \t]*(?:\n|\Z)", re.DOTALL | re.MULTILINE)
 _H1_RE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
 WIDGET_MACRO_RE = re.compile(r'\{\{\s*widget:\s*([A-Za-z0-9_-]+)((?:\s+[A-Za-z0-9_-]+="[^"]*")*)\s*\}\}')
 _WIDGET_MACRO_RE = WIDGET_MACRO_RE  # internal alias, kept for brevity below
@@ -203,7 +205,9 @@ class WikiRenderer:
         path = self._safe_join(relpath)
         if not path.is_file():
             raise PageNotFound(relpath)
-        return _parse_frontmatter(path.read_text(encoding="utf-8"))
+        # utf-8-sig: drop a leading BOM (as some Windows editors write) so
+        # the frontmatter fence is still at the very start of the text.
+        return _parse_frontmatter(path.read_text(encoding="utf-8-sig"))
 
     def _title_for(self, relpath: str) -> str:
         frontmatter, body = self._read(relpath)
