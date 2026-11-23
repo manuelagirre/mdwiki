@@ -16,6 +16,12 @@ from .render import PageNotFound, WikiRenderer, relpath_to_url
 from .theme import DEFAULT_THEME_DIR, STATIC_DIR
 from .widgets import resolve_widget
 
+DEFAULT_FAVICON = (
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E"
+    "%3Crect x='2' y='1' width='12' height='14' rx='2' fill='%231565c0'/%3E"
+    "%3Cpath d='M5 5h6M5 8h6M5 11h4' stroke='white' stroke-width='1.3'/%3E%3C/svg%3E"
+)
+
 _TEMPLATES_CACHE: dict[Path, object] = {}
 
 
@@ -104,6 +110,10 @@ def create_app(
                 "has_mermaid": page.has_mermaid,
                 "request_path": request.url.path,
                 "stylesheet_override": STYLESHEET_OVERRIDE_URL if config.stylesheet is not None else None,
+                # The content root's own favicon.ico if it has one (served
+                # raw like any other file), else a small built-in icon -
+                # either way the browser stops logging a 404 per page view.
+                "favicon": "/favicon.ico" if (content_dir / "favicon.ico").is_file() else DEFAULT_FAVICON,
             },
         )
 
