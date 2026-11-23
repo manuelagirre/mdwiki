@@ -182,6 +182,11 @@ mdwiki order append        lessons wrap-up.md
 mdwiki order remove        lessons wrap-up.md
 ```
 
+Positioning a name that's already listed moves it rather than listing it
+twice, and an `existing_name` that is neither listed nor on disk is an
+error (nothing is written) - so a typo can't silently drop the new entry
+at the top or bottom.
+
 ### `mdwiki validate`
 
 A pre-flight check, separate from the graceful runtime fallbacks above

@@ -122,7 +122,14 @@ def adjacent(root: Path, current_relpath: str, selector: str, *, direction: int)
 
 # --- insert/remove API, mirrored as `mdwiki order` CLI subcommands ---------
 
+class OrderError(Exception):
+    """An `mdwiki order` edit that can't be applied as asked (missing
+    directory, unknown anchor entry). Nothing is written when raised."""
+
+
 def _load_raw(dir_path: Path) -> list[str]:
+    if not dir_path.is_dir():
+        raise OrderError(f"{dir_path} is not a directory")
     return _read_order_file(dir_path)
 
 
@@ -131,28 +138,38 @@ def _save_raw(dir_path: Path, entries: list[str]) -> None:
     order_path.write_text(yaml.safe_dump(entries, sort_keys=False), encoding="utf-8")
 
 
-def insert_after(dir_path: Path, existing_name: str, new_name: str) -> None:
+def _entries_with(dir_path: Path, existing_name: str, new_name: str) -> list[str]:
+    """The manifest to edit for an insert next to `existing_name`, with
+    `new_name` taken out of it - inserting a name that's already listed
+    *moves* it instead of listing it twice."""
     entries = _load_raw(dir_path)
     if existing_name not in entries:
+        # Unlisted but on disk: materialise the current effective order so
+        # the anchor has a position to insert relative to.
         entries = ordered_entries(dir_path)
-    idx = entries.index(existing_name) if existing_name in entries else len(entries) - 1
-    entries.insert(idx + 1, new_name)
+    if existing_name not in entries:
+        raise OrderError(f"{existing_name!r} is neither listed in {dir_path / ORDER_FILENAME} nor a page on disk")
+    if existing_name == new_name:
+        raise OrderError(f"can't position {new_name!r} relative to itself")
+    return [e for e in entries if e != new_name]
+
+
+def insert_after(dir_path: Path, existing_name: str, new_name: str) -> None:
+    entries = _entries_with(dir_path, existing_name, new_name)
+    entries.insert(entries.index(existing_name) + 1, new_name)
     _save_raw(dir_path, entries)
 
 
 def insert_before(dir_path: Path, existing_name: str, new_name: str) -> None:
-    entries = _load_raw(dir_path)
-    if existing_name not in entries:
-        entries = ordered_entries(dir_path)
-    idx = entries.index(existing_name) if existing_name in entries else 0
-    entries.insert(idx, new_name)
+    entries = _entries_with(dir_path, existing_name, new_name)
+    entries.insert(entries.index(existing_name), new_name)
     _save_raw(dir_path, entries)
 
 
 def append(dir_path: Path, new_name: str) -> None:
+    """Position `new_name` last (moving it there if already listed)."""
     entries = _load_raw(dir_path) or ordered_entries(dir_path)
-    if new_name not in entries:
-        entries.append(new_name)
+    entries = [e for e in entries if e != new_name] + [new_name]
     _save_raw(dir_path, entries)
 
 

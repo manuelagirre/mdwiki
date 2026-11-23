@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from .config import SiteConfig
-from .ordering import append, insert_after, insert_before, remove
+from .ordering import OrderError, append, insert_after, insert_before, remove
 from .server import serve
 from .validate import validate
 
@@ -30,14 +30,18 @@ def _cmd_validate(args: argparse.Namespace) -> int:
 
 def _cmd_order(args: argparse.Namespace) -> int:
     dir_path = Path(args.order_dir)
-    if args.order_action == "insert-after":
-        insert_after(dir_path, args.existing_name, args.new_name)
-    elif args.order_action == "insert-before":
-        insert_before(dir_path, args.existing_name, args.new_name)
-    elif args.order_action == "append":
-        append(dir_path, args.new_name)
-    elif args.order_action == "remove":
-        remove(dir_path, args.name)
+    try:
+        if args.order_action == "insert-after":
+            insert_after(dir_path, args.existing_name, args.new_name)
+        elif args.order_action == "insert-before":
+            insert_before(dir_path, args.existing_name, args.new_name)
+        elif args.order_action == "append":
+            append(dir_path, args.new_name)
+        elif args.order_action == "remove":
+            remove(dir_path, args.name)
+    except OrderError as exc:
+        print(f"mdwiki order: {exc}", file=sys.stderr)
+        return 2
     return 0
 
 

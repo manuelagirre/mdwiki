@@ -1,7 +1,10 @@
 from pathlib import Path
 
+import pytest
+
+from mdwiki.cli import main
 from mdwiki.config import SiteConfig
-from mdwiki.ordering import ordered_entries, walk
+from mdwiki.ordering import OrderError, append, insert_after, insert_before, ordered_entries, read_order_file, walk
 from mdwiki.validate import validate
 
 
@@ -26,3 +29,34 @@ def test_validate_ignores_asset_dirs_but_flags_them_if_listed(tmp_path):
     (tmp_path / "_order.yml").write_text("- a.md\n- images\n", encoding="utf-8")
     issues = validate(tmp_path, SiteConfig(), None)
     assert issues == ["_order.yml: entry 'images' is not a page or a directory of pages"]
+
+
+def test_insert_moves_an_already_listed_entry_instead_of_duplicating(tmp_path):
+    _touch(tmp_path, "a.md", "b.md", "c.md")
+    insert_after(tmp_path, "a.md", "c.md")
+    assert read_order_file(tmp_path) == ["a.md", "c.md", "b.md"]
+    insert_before(tmp_path, "a.md", "b.md")
+    assert read_order_file(tmp_path) == ["b.md", "a.md", "c.md"]
+    append(tmp_path, "b.md")
+    assert read_order_file(tmp_path) == ["a.md", "c.md", "b.md"]
+
+
+def test_insert_relative_to_unknown_entry_fails_without_writing(tmp_path):
+    _touch(tmp_path, "a.md")
+    for op in (insert_after, insert_before):
+        with pytest.raises(OrderError):
+            op(tmp_path, "typo.md", "new.md")
+    assert not (tmp_path / "_order.yml").exists()
+
+
+def test_new_entry_can_be_listed_before_its_file_exists(tmp_path):
+    _touch(tmp_path, "a.md", "b.md")
+    insert_after(tmp_path, "a.md", "draft.md")
+    assert read_order_file(tmp_path) == ["a.md", "draft.md", "b.md"]
+
+
+def test_order_cli_reports_errors_instead_of_a_traceback(tmp_path, capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        main(["order", "append", str(tmp_path / "missing"), "x.md"])
+    assert exit_info.value.code == 2
+    assert "is not a directory" in capsys.readouterr().err
