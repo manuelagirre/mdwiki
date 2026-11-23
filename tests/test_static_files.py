@@ -149,3 +149,18 @@ def test_favicon_defaults_to_builtin_and_prefers_content_root_icon(tmp_path):
     client = _client(site)
     assert 'rel="icon" href="/favicon.ico"' in client.get("/").text
     assert client.get("/favicon.ico").status_code == 200
+
+
+def test_markdown_pages_under_dot_paths_are_not_rendered(tmp_path):
+    site = _site(tmp_path)
+    (site / ".github").mkdir()
+    (site / ".github" / "SECURITY.md").write_text("# internal\n\n[broken](nowhere.md)\n", encoding="utf-8")
+    (site / ".draft.md").write_text("# draft\n", encoding="utf-8")
+    client = _client(site)
+    missing = client.get("/no-such-page").text
+    for url in ("/.github/SECURITY", "/.draft", "/.github/"):
+        res = client.get(url)
+        assert res.status_code == 404, url
+        assert res.text == missing, url
+    # ...and validate doesn't check what is never served
+    assert not any(".github" in issue for issue in validate(site, SiteConfig(), None))

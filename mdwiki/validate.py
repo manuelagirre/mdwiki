@@ -23,8 +23,14 @@ _EXTERNAL_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*:")
 _HTML_SUFFIXES = (".html", ".htm")
 
 
+def _in_dot_path(root: Path, path: Path) -> bool:
+    return any(part.startswith(".") for part in path.relative_to(root).parts)
+
+
 def _all_md_files(root: Path) -> list[Path]:
-    return sorted(p for p in root.rglob("*.md") if p.is_file())
+    """Every served `.md` page - dot-paths (`.git/`, `.github/`) are never
+    served, so they aren't checked either."""
+    return sorted(p for p in root.rglob("*.md") if p.is_file() and not _in_dot_path(root, p))
 
 
 def _is_html(relpath: str) -> bool:
@@ -39,7 +45,7 @@ def _all_page_files(root: Path) -> list[Path]:
         for p in root.rglob("*")
         if p.is_file()
         and _is_html(p.name)
-        and not any(part.startswith(".") for part in p.relative_to(root).parts)
+        and not _in_dot_path(root, p)
     ]
     return sorted(_all_md_files(root) + html)
 
@@ -70,7 +76,7 @@ def validate(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[s
     issues: list[str] = list(config.warnings)
 
     # --- _order.yml entries -------------------------------------------------
-    for dir_path in [root] + [p for p in root.rglob("*") if p.is_dir()]:
+    for dir_path in [root] + [p for p in root.rglob("*") if p.is_dir() and not _in_dot_path(root, p)]:
         order_path = dir_path / ORDER_FILENAME
         if not order_path.is_file():
             continue

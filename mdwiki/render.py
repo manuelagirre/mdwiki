@@ -254,6 +254,11 @@ class WikiRenderer:
         `config.index_page` (if set) before falling back to plain
         `index.md` - see SiteConfig.index_page."""
         url_path = url_path.strip("/")
+        if any(part.startswith(".") for part in url_path.split("/")):
+            # Dot-paths (`.github/`, `.private.md`) are never part of the
+            # site - not served raw, listed, ordered or searched, and not
+            # rendered either.
+            raise PageNotFound(url_path)
         if url_path:
             candidates = [f"{url_path}.md", f"{url_path}/index.md"]
         else:
