@@ -287,3 +287,20 @@ def test_widget_macros_shown_as_code_stay_literal(tmp_path):
 
     # validate doesn't flag the examples as unresolved widgets
     assert validate(tmp_path, SiteConfig(), None) == []
+
+
+def test_nav_active_state_respects_path_segments(tmp_path):
+    for rel in ("index.md", "lessons/index.md", "lessons/one.md", "lessons-old/index.md"):
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text("# x\n", encoding="utf-8")
+    cfg = tmp_path / "mdwiki.yml"
+    cfg.write_text("nav:\n  - {label: Home, href: /}\n  - {label: Lessons, href: /lessons}\n", encoding="utf-8")
+    client = TestClient(create_app(content_dir=tmp_path, config_path=cfg))
+
+    def active(url):
+        return re.findall(r'class="active">([^<]+)</a>', client.get(url).text)
+
+    assert active("/") == ["Home"]
+    assert active("/lessons/") == ["Lessons"]
+    assert active("/lessons/one") == ["Lessons"]
+    assert active("/lessons-old/") == []
