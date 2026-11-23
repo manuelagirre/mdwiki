@@ -33,7 +33,9 @@ folds to `/dir/`. There is no fixed URL scheme to configure - whatever
 files exist define the URLs that exist.
 
 Path-traversal attempts and missing pages both 404 identically (never a
-400 that would hint which case it was).
+400 that would hint which case it was). The 404 is a "Page not found" page
+in the site's own theme, with the nav, so a reader who followed a stale
+link can find their way back.
 
 ### Plain HTML pages and other files
 

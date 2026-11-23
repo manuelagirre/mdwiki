@@ -54,16 +54,18 @@ def test_md_page_wins_its_url_over_a_raw_file(tmp_path):
 
 def test_excluded_files_are_404(tmp_path):
     client = _client(_site(tmp_path))
+    missing = client.get("/no-such-page")
     for path in ("/index.md", "/reports/_order.yml", "/.wiki-manifest.json"):
         res = client.get(path)
         assert res.status_code == 404, path
-        assert res.text == "Not found"
+        assert res.text == missing.text, path  # indistinguishable from a missing page
 
 
 def test_missing_raw_file_is_plain_404(tmp_path):
-    res = _client(_site(tmp_path)).get("/reports/nope.html")
+    client = _client(_site(tmp_path))
+    res = client.get("/reports/nope.html")
     assert res.status_code == 404
-    assert res.text == "Not found"
+    assert res.text == client.get("/no-such-page").text
 
 
 def test_raw_file_traversal_is_404(tmp_path):

@@ -337,3 +337,11 @@ def test_validate_decodes_percent_encoded_links(tmp_path):
     assert issues == [
         "index.md: link to 'My%20Page#nope' points at anchor #nope which doesn't exist on My Page.md"
     ]
+
+
+def test_404_is_rendered_in_the_site_shell():
+    res = _client().get("/nope/does-not-exist")
+    assert res.status_code == 404
+    assert "Page not found" in res.text
+    assert 'class="site-nav"' in res.text  # nav still there to recover with
+    assert "Example Wiki" in res.text

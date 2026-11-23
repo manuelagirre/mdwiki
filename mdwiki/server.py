@@ -50,8 +50,20 @@ def create_app(
     app = FastAPI(title=config.title)
 
     @app.exception_handler(PageNotFound)
-    async def _not_found(request: Request, exc: PageNotFound) -> PlainTextResponse:
-        return PlainTextResponse("Not found", status_code=404)
+    async def _not_found(request: Request, exc: PageNotFound):
+        # Byte-identical body for every miss (missing page, traversal
+        # attempt, excluded file), so a 404 never hints which case it was.
+        # Rendered in the normal page shell so the reader keeps the nav and
+        # a way back, rather than a dead-end text page.
+        content = (
+            '<h1 id="page-not-found">Page not found</h1>\n'
+            "<p>There is no page at this address.</p>\n"
+            '<p><a href="/">Go to the home page</a></p>'
+        )
+        try:
+            return _shell_response(request, "Page not found", content, status_code=404)
+        except Exception:  # a broken custom template must not turn 404s into 500s
+            return PlainTextResponse("Not found", status_code=404)
 
     @app.get("/_assets/{asset_path:path}")
     async def _assets(asset_path: str):
@@ -71,21 +83,39 @@ def create_app(
             raise HTTPException(status_code=404, detail="asset not found")
         return FileResponse(candidate)
 
-    def _render_response(request: Request, url_path: str):
-        page = renderer.render_url(url_path)
+    def _shell_response(
+        request: Request,
+        title: str,
+        content: str,
+        *,
+        back_link: dict[str, str] | None = None,
+        has_mermaid: bool = False,
+        status_code: int = 200,
+    ):
         return templates.TemplateResponse(
             request=request,
             name="page.html",
+            status_code=status_code,
             context={
                 "site_title": config.title,
-                "title": page.title,
-                "content": page.content_html,
-                "back_link": page.back_link,
+                "title": title,
+                "content": content,
+                "back_link": back_link,
                 "nav": config.nav,
                 "backend_base": config.backend_base,
-                "has_mermaid": page.has_mermaid,
+                "has_mermaid": has_mermaid,
                 "request_path": request.url.path,
             },
+        )
+
+    def _render_response(request: Request, url_path: str):
+        page = renderer.render_url(url_path)
+        return _shell_response(
+            request,
+            page.title,
+            page.content_html,
+            back_link=page.back_link,
+            has_mermaid=page.has_mermaid,
         )
 
     @app.get("/")
