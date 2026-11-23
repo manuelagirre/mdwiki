@@ -20,13 +20,31 @@ from .paths import is_hidden
 ORDER_FILENAME = "_order.yml"
 
 
+def order_file_problem(dir_path: Path) -> str | None:
+    """Why dir_path's `_order.yml` can't be used (shown by validate), or
+    None if it is fine or absent."""
+    order_path = dir_path / ORDER_FILENAME
+    if not order_path.is_file():
+        return None
+    try:
+        raw = yaml.safe_load(order_path.read_text(encoding="utf-8-sig"))
+    except (yaml.YAMLError, UnicodeDecodeError) as exc:
+        return f"not valid YAML ({str(exc).splitlines()[0]}); ignored, so this folder is ordered alphabetically"
+    if raw is not None and not isinstance(raw, list):
+        return "must be a YAML list of names (- intro.md); ignored, so this folder is ordered alphabetically"
+    return None
+
+
 def read_order_file(dir_path: Path) -> list[str]:
+    """The manifest's entries. A missing or unusable manifest reads as
+    empty (plain alphabetical order) rather than failing every page in the
+    folder; `order_file_problem` says what was wrong with it."""
+    if order_file_problem(dir_path) is not None:
+        return []
     order_path = dir_path / ORDER_FILENAME
     if not order_path.is_file():
         return []
-    raw = yaml.safe_load(order_path.read_text(encoding="utf-8")) or []
-    if not isinstance(raw, list):
-        return []
+    raw = yaml.safe_load(order_path.read_text(encoding="utf-8-sig")) or []
     return [str(entry) for entry in raw]
 
 
@@ -150,6 +168,9 @@ class OrderError(Exception):
 def _load_raw(dir_path: Path) -> list[str]:
     if not dir_path.is_dir():
         raise OrderError(f"{dir_path} is not a directory")
+    problem = order_file_problem(dir_path)
+    if problem:  # don't overwrite an author's (broken) manifest with a guess
+        raise OrderError(f"{dir_path / ORDER_FILENAME}: {problem.split(';')[0]} - fix it by hand first")
     return _read_order_file(dir_path)
 
 

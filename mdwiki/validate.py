@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.parse import unquote, urljoin, urlsplit
 
 from .config import SiteConfig
-from .ordering import ORDER_FILENAME, Page, orderable_names, read_order_file
+from .ordering import ORDER_FILENAME, Page, order_file_problem, orderable_names, read_order_file
 from .paths import is_hidden
 from .render import PageNotFound, RenderedPage, WikiRenderer, frontmatter_problems, read_page_text, relpath_to_url
 from .widgets import resolve_widget
@@ -81,9 +81,13 @@ def validate(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[s
         order_path = dir_path / ORDER_FILENAME
         if not order_path.is_file():
             continue
+        rel_dir = dir_path.relative_to(root)
+        problem = order_file_problem(dir_path)
+        if problem:
+            issues.append(f"{rel_dir / ORDER_FILENAME}: {problem}")
+            continue
         listed = read_order_file(dir_path)
         on_disk = orderable_names(dir_path)
-        rel_dir = dir_path.relative_to(root)
         for name in listed:
             if name in on_disk:
                 continue

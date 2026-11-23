@@ -60,3 +60,24 @@ def test_order_cli_reports_errors_instead_of_a_traceback(tmp_path, capsys):
         main(["order", "append", str(tmp_path / "missing"), "x.md"])
     assert exit_info.value.code == 2
     assert "is not a directory" in capsys.readouterr().err
+
+
+def test_broken_manifest_falls_back_to_alphabetical_and_is_reported(tmp_path):
+    _touch(tmp_path, "l/b.md", "l/a.md")
+    (tmp_path / "l" / "_order.yml").write_text("- b.md\n- [a.md\n", encoding="utf-8")
+    assert ordered_entries(tmp_path / "l") == ["a.md", "b.md"]
+    [issue] = validate(tmp_path, SiteConfig(), None)
+    assert issue.startswith("l/_order.yml: not valid YAML")
+
+    (tmp_path / "l" / "_order.yml").write_text("first: b.md\n", encoding="utf-8")
+    [issue] = validate(tmp_path, SiteConfig(), None)
+    assert "must be a YAML list" in issue
+
+
+def test_order_commands_refuse_to_overwrite_a_broken_manifest(tmp_path):
+    _touch(tmp_path, "a.md", "b.md")
+    broken = "- b.md\n- [a.md\n"
+    (tmp_path / "_order.yml").write_text(broken, encoding="utf-8")
+    with pytest.raises(OrderError, match="fix it by hand"):
+        append(tmp_path, "c.md")
+    assert (tmp_path / "_order.yml").read_text(encoding="utf-8") == broken
