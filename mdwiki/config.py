@@ -1,6 +1,6 @@
-"""mdwiki.yml site config: title, nav links, theme override, backend_base,
-index override, and widget hook rows (auto-injected widgets). See README.md
-"Site config".
+"""mdwiki.yml site config: title, nav links, theme override, widgets dir,
+backend_base, index override, and widget hook rows (auto-injected
+widgets). See README.md "Site config".
 """
 from __future__ import annotations
 
@@ -41,6 +41,10 @@ class SiteConfig:
     theme_dir: Path | None = None
     backend_base: str = ""
     widget_hooks: list[WidgetHook] = field(default_factory=list)
+    widgets_dir: Path | None = None
+    """`widgets_dir:` - host widgets directory, resolved relative to the
+    config file (like `theme:`). An explicit `--widgets` / `widgets=`
+    argument takes precedence over it."""
     index_page: str | None = None
     """Relpath (e.g. "Project-Overview.md") of the file to serve at `/`,
     instead of requiring a literal `index.md` at the content root. See
@@ -57,6 +61,8 @@ class SiteConfig:
         nav = [NavLink(**item) for item in raw.get("nav", [])]
         theme = raw.get("theme")
         theme_dir = (path.parent / theme).resolve() if theme else None
+        widgets = raw.get("widgets_dir")
+        widgets_dir = (path.parent / widgets).resolve() if widgets else None
         hooks = [
             WidgetHook(name=item["name"], anchor=item.get("anchor", "bottom"), selector=item["selector"])
             for item in raw.get("widgets", [])
@@ -65,6 +71,7 @@ class SiteConfig:
             title=raw.get("title", "Wiki"),
             nav=nav,
             theme_dir=theme_dir,
+            widgets_dir=widgets_dir,
             backend_base=raw.get("backend_base", ""),
             widget_hooks=hooks,
             index_page=raw.get("index"),

@@ -17,7 +17,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 
 def _cmd_validate(args: argparse.Namespace) -> int:
     config = SiteConfig.load(Path(args.config) if args.config else None)
-    widgets_dir = Path(args.widgets).resolve() if args.widgets else None
+    widgets_dir = Path(args.widgets).resolve() if args.widgets else config.widgets_dir
     issues = validate(Path(args.dir), config, widgets_dir)
     if not issues:
         print("mdwiki validate: clean, no issues found.")

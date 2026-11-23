@@ -33,7 +33,7 @@ def create_app(
 ) -> FastAPI:
     content_dir = Path(content_dir).resolve()
     config = SiteConfig.load(config_path)
-    effective_widgets_dir = Path(widgets_dir).resolve() if widgets_dir else None
+    effective_widgets_dir = Path(widgets_dir).resolve() if widgets_dir else config.widgets_dir
     theme_dir = config.theme_dir if config.theme_dir else DEFAULT_THEME_DIR
     renderer = WikiRenderer(content_dir, config, effective_widgets_dir)
     templates = _templates_for(theme_dir)

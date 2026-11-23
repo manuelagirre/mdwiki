@@ -81,6 +81,7 @@ nav:
   - label: Lessons
     href: /lessons/
 theme: ./my-theme        # optional - a directory with its own page.html/app.css
+widgets_dir: ./widgets    # optional - host widgets; `--widgets` overrides it
 backend_base: "http://localhost:8001"   # optional, see "Backend calls" below
 widgets:                  # optional - auto-injected ("hook") widgets
   - name: next-button
@@ -88,7 +89,8 @@ widgets:                  # optional - auto-injected ("hook") widgets
     selector: "lessons/*"
 ```
 
-`nav`/`title`/`theme`/`backend_base`/`index` are all optional; an absent
+`nav`/`title`/`theme`/`widgets_dir`/`backend_base`/`index` are all
+optional (`theme` and `widgets_dir` resolve relative to `mdwiki.yml`); an absent
 `mdwiki.yml` just gets you the default theme with no nav links, and `/`
 requires a literal `index.md` at the content root.
 
