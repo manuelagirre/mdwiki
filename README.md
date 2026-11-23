@@ -80,7 +80,7 @@ nav:
     href: /
   - label: Lessons
     href: /lessons/
-theme: ./my-theme        # optional - a directory with its own page.html/app.css
+theme: ./my-theme        # optional - your page.html and/or app.css (either one alone is fine)
 widgets_dir: ./widgets    # optional - host widgets; `--widgets` overrides it
 backend_base: "http://localhost:8001"   # optional, see "Backend calls" below
 widgets:                  # optional - auto-injected ("hook") widgets

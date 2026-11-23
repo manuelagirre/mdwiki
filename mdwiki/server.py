@@ -15,15 +15,24 @@ from .render import PageNotFound, WikiRenderer, relpath_to_url
 from .theme import DEFAULT_THEME_DIR, STATIC_DIR
 from .widgets import resolve_widget
 
-_TEMPLATES_CACHE: dict[Path, object] = {}
+_TEMPLATES_CACHE: dict[tuple[Path, ...], object] = {}
 
 
-def _templates_for(theme_dir: Path):
+def _theme_search_path(theme_dir: Path | None) -> tuple[Path, ...]:
+    """A custom theme is overlaid on the default one, file by file: a theme
+    that only ships `app.css` still gets the default `page.html`, and one
+    that only ships `page.html` can still link `/_assets/app.css`."""
+    if theme_dir is None or theme_dir == DEFAULT_THEME_DIR:
+        return (DEFAULT_THEME_DIR,)
+    return (theme_dir, DEFAULT_THEME_DIR)
+
+
+def _templates_for(search_path: tuple[Path, ...]):
     from fastapi.templating import Jinja2Templates
 
-    if theme_dir not in _TEMPLATES_CACHE:
-        _TEMPLATES_CACHE[theme_dir] = Jinja2Templates(directory=str(theme_dir))
-    return _TEMPLATES_CACHE[theme_dir]
+    if search_path not in _TEMPLATES_CACHE:
+        _TEMPLATES_CACHE[search_path] = Jinja2Templates(directory=[str(p) for p in search_path])
+    return _TEMPLATES_CACHE[search_path]
 
 
 def create_app(
@@ -34,9 +43,9 @@ def create_app(
     content_dir = Path(content_dir).resolve()
     config = SiteConfig.load(config_path)
     effective_widgets_dir = Path(widgets_dir).resolve() if widgets_dir else config.widgets_dir
-    theme_dir = config.theme_dir if config.theme_dir else DEFAULT_THEME_DIR
+    theme_path = _theme_search_path(config.theme_dir)
     renderer = WikiRenderer(content_dir, config, effective_widgets_dir)
-    templates = _templates_for(theme_dir)
+    templates = _templates_for(theme_path)
 
     app = FastAPI(title=config.title)
 
@@ -46,7 +55,7 @@ def create_app(
 
     @app.get("/_assets/{asset_path:path}")
     async def _assets(asset_path: str):
-        for base in (theme_dir, STATIC_DIR):
+        for base in (*theme_path, STATIC_DIR):
             candidate = (base / asset_path).resolve()
             if candidate.is_relative_to(base.resolve()) and candidate.is_file():
                 return FileResponse(candidate)
