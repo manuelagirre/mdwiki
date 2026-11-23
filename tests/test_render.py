@@ -304,3 +304,23 @@ def test_nav_active_state_respects_path_segments(tmp_path):
     assert active("/lessons/") == ["Lessons"]
     assert active("/lessons/one") == ["Lessons"]
     assert active("/lessons-old/") == []
+
+
+def test_validate_checks_nav_index_and_back_links(tmp_path):
+    (tmp_path / "index.md").write_text("# Home\n", encoding="utf-8")
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "page.md").write_text(
+        "---\nback_link: {href: ../nowhere, label: Back}\n---\n# Page\n", encoding="utf-8"
+    )
+    cfg = tmp_path / "mdwiki.yml"
+    cfg.write_text(
+        "index: Missing.md\nnav:\n  - {label: Home, href: /}\n  - {label: Docs, href: /docs/page}\n"
+        "  - {label: Gone, href: /gone}\n  - {label: Ext, href: 'https://example.com'}\n",
+        encoding="utf-8",
+    )
+    issues = validate(tmp_path, SiteConfig.load(cfg), None)
+    assert sorted(issues) == sorted([
+        "mdwiki.yml nav: link to '/gone' does not resolve (resolved path '/gone')",
+        "mdwiki.yml: index 'Missing.md' does not exist (falling back to index.md at /)",
+        "docs/page.md (back_link): link to '../nowhere' does not resolve (resolved path '/nowhere')",
+    ])

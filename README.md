@@ -205,7 +205,10 @@ every `{{ widget: name }}` macro and hook `name` that doesn't resolve under
 YAML or has a field of the wrong shape (the live server ignores such a
 field rather than failing the page); every internal `<a href>` (post-rewrite,
 see "Cross-links between pages") that doesn't resolve to a real page; every
-`#fragment` link whose target page has no matching `id=`. The link/anchor
+`#fragment` link whose target page has no matching `id=`; the same checks
+for `mdwiki.yml` `nav` links and frontmatter `back_link`s (they sit in the
+page shell, outside the rendered content); and an `index:` that names a
+missing file. The link/anchor
 checks render every page through the same `WikiRenderer` the live server
 uses, so they can't drift from what actually 404s at runtime. Links to
 author-written `.html` pages and other raw files count as resolving when
