@@ -448,3 +448,12 @@ def test_prev_button_assets_ship_with_mdwiki():
     client = _client()
     assert client.get("/_widgets/prev-button/widget.js").status_code == 200
     assert client.get("/_widgets/prev-button/widget.css").status_code == 200
+
+
+def test_responses_are_gzipped_when_the_client_accepts_it():
+    client = _client()
+    res = client.get("/_assets/app.css", headers={"Accept-Encoding": "gzip"})
+    assert res.headers.get("content-encoding") == "gzip"
+    assert "site-nav" in res.text  # httpx decodes transparently
+    res = client.get("/_assets/app.css", headers={"Accept-Encoding": "identity"})
+    assert "content-encoding" not in res.headers

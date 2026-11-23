@@ -9,6 +9,7 @@ from urllib.parse import quote
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 
 from .config import SiteConfig
@@ -84,6 +85,8 @@ def create_app(
     templates = _templates_for(theme_path)
 
     app = FastAPI(title=config.title)
+    # Rendered pages and the theme CSS are text that compresses ~4-5x.
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
 
     # Route handlers are plain `def`, not `async def`: they read files and
     # render markdown (blocking work), and FastAPI runs sync handlers in its
