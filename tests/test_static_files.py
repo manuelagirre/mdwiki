@@ -164,3 +164,13 @@ def test_markdown_pages_under_dot_paths_are_not_rendered(tmp_path):
         assert res.text == missing, url
     # ...and validate doesn't check what is never served
     assert not any(".github" in issue for issue in validate(site, SiteConfig(), None))
+
+
+def test_site_config_inside_content_root_is_not_served(tmp_path):
+    site = _site(tmp_path)
+    cfg = site / "mdwiki.yml"
+    cfg.write_text("title: T\nbackend_base: http://internal:9000\n", encoding="utf-8")
+    (site / "other.yml").write_text("a: 1\n", encoding="utf-8")
+    client = TestClient(create_app(content_dir=site, config_path=cfg))
+    assert client.get("/mdwiki.yml").status_code == 404
+    assert client.get("/other.yml").status_code == 200  # other yaml files are ordinary content

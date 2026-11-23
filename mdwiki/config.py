@@ -75,6 +75,9 @@ class SiteConfig:
     falling back to plain `index.md`, so an absent/missing override never
     breaks the plain-`index.md` case."""
 
+    source: Path | None = None
+    """The mdwiki.yml this was loaded from (resolved), if any - never served
+    as a raw file even when it lives inside the content root."""
     warnings: list[str] = field(default_factory=list)
     """Non-fatal problems found while loading (unknown keys, most likely
     typos). `serve` prints them at startup; `validate` reports them."""
@@ -124,6 +127,7 @@ class SiteConfig:
             backend_base=raw.get("backend_base", "") or "",
             widget_hooks=hooks,
             index_page=raw.get("index"),
+            source=path.resolve(),
             warnings=warnings,
         )
 

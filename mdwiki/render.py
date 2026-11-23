@@ -287,6 +287,10 @@ class WikiRenderer:
         # expose an excluded file under an innocent-looking name.
         if _raw_excluded(relpath.split("/")) or _raw_excluded(path.relative_to(self.root).parts):
             raise PageNotFound(url_path)
+        # The site's own mdwiki.yml is configuration, not content, even when
+        # it sits inside the content root.
+        if self.config.source is not None and path == self.config.source:
+            raise PageNotFound(url_path)
         return relpath
 
     def file_path(self, relpath: str) -> Path:

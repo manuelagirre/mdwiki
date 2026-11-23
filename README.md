@@ -80,7 +80,8 @@ content type is guessed from the file extension.
 A `.md` page always wins its URL: raw files are only consulted when no
 `<path>.md` or `<path>/index.md` matches. A few files are never served raw
 and 404 like a missing page: `.md` sources themselves (`/lessons/loops.md`
-is not a URL - use `/lessons/loops`), `_order.yml` manifests, and anything
+is not a URL - use `/lessons/loops`), `_order.yml` manifests, the site's own
+`mdwiki.yml` (if it lives inside the content root), and anything
 under a path segment starting with `.` (e.g. `.git/`, `.wiki-manifest.json`).
 Paths under `/_assets/` and `/_widgets/`, and `/_search`, are reserved for
 mdwiki itself.
