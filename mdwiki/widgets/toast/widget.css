@@ -31,3 +31,25 @@
   border-left-color: #c62828;
   background: #fff5f5;
 }
+
+@media (prefers-color-scheme: dark) {
+  .toast {
+    border-color: #33363d;
+    color: #e3e3e3;
+  }
+
+  .toast-info {
+    border-left-color: #7ab7ff;
+    background: #1a2433;
+  }
+
+  .toast-warning {
+    border-left-color: #ffab70;
+    background: #2e2219;
+  }
+
+  .toast-error {
+    border-left-color: #ff8a80;
+    background: #321b1d;
+  }
+}

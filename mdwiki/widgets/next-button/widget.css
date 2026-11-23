@@ -22,3 +22,17 @@
   color: #757575;
   font-style: italic;
 }
+
+@media (prefers-color-scheme: dark) {
+  .next-button {
+    background: #2b6cb0;
+  }
+
+  .next-button:hover {
+    background: #3b82d0;
+  }
+
+  .next-button-empty {
+    color: #a0a0a0;
+  }
+}

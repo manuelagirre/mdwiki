@@ -79,6 +79,14 @@ files are served raw at their literal path (see "Plain HTML pages and other
 files" above), so a relative link like `[report](q3.html)` or
 `![chart](chart.png)` already resolves as written.
 
+## Dark mode
+
+The default theme follows the reader's OS light/dark setting - page,
+code highlighting, mermaid diagrams and the standard widgets. Its colours
+are CSS custom properties on `:root` (`--mdwiki-bg`, `--mdwiki-accent`,
+...), so a theme's `app.css` can retune either palette without copying the
+whole stylesheet.
+
 ## Search
 
 Every page of the default theme has a search box in the nav; it submits to
