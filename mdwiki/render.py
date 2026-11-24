@@ -53,6 +53,10 @@ _PLACEHOLDER = "MDWIKIWIDGETPLACEHOLDER{idx}ENDMDWIKIWIDGETPLACEHOLDER"
 _PLACEHOLDER_RE = re.compile(r"MDWIKIWIDGETPLACEHOLDER(\d+)ENDMDWIKIWIDGETPLACEHOLDER")
 
 
+_MAX_NAME_BYTES = 255  # NAME_MAX on Linux/macOS filesystems
+_MAX_PATH_BYTES = 3000  # comfortably under PATH_MAX once joined to the root
+
+
 class PageNotFound(Exception):
     """Raised both for missing files and for any path-traversal attempt - the
     caller always turns this into a plain 404, never a 400 that would hint
@@ -188,6 +192,13 @@ class WikiRenderer:
         # instead of simply missing - treat it as the 404 it should be.
         if "\x00" in relpath:
             raise PageNotFound(f"embedded NUL: {relpath!r}")
+        # Names longer than the filesystem allows make stat() raise
+        # ENAMETOOLONG (which is_file() doesn't swallow) - a 500. No such
+        # file can exist, so it's simply a miss.
+        if len(relpath.encode()) > _MAX_PATH_BYTES or any(
+            len(part.encode()) > _MAX_NAME_BYTES for part in relpath.split("/")
+        ):
+            raise PageNotFound("name too long")
         candidate = self.root.joinpath(*relpath.split("/")).resolve()
         if not candidate.is_relative_to(self.root):
             raise PageNotFound(f"escapes root: {relpath!r}")
