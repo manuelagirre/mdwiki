@@ -44,7 +44,7 @@ def create_app(
     async def _not_found(request: Request, exc: PageNotFound) -> PlainTextResponse:
         return PlainTextResponse("Not found", status_code=404)
 
-    @app.get("/_assets/{asset_path:path}")
+    @app.api_route("/_assets/{asset_path:path}", methods=["GET", "HEAD"])
     async def _assets(asset_path: str):
         for base in (theme_dir, STATIC_DIR):
             candidate = (base / asset_path).resolve()
@@ -52,7 +52,7 @@ def create_app(
                 return FileResponse(candidate)
         raise HTTPException(status_code=404, detail="asset not found")
 
-    @app.get("/_widgets/{name}/{asset_path:path}")
+    @app.api_route("/_widgets/{name}/{asset_path:path}", methods=["GET", "HEAD"])
     async def _widget_assets(name: str, asset_path: str):
         widget_dir = resolve_widget(name, effective_widgets_dir)
         if widget_dir is None:
@@ -79,11 +79,11 @@ def create_app(
             },
         )
 
-    @app.get("/")
+    @app.api_route("/", methods=["GET", "HEAD"])
     async def _index(request: Request):
         return _render_response(request, "")
 
-    @app.get("/{url_path:path}")
+    @app.api_route("/{url_path:path}", methods=["GET", "HEAD"])
     async def _page(request: Request, url_path: str):
         if renderer.page_exists(url_path):
             # Relative links in a page resolve against the URL it's served

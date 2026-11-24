@@ -210,3 +210,14 @@ def test_wellformed_frontmatter_is_not_reported(tmp_path):
         encoding="utf-8",
     )
     assert validate(tmp_path, SiteConfig(), None) == []
+
+
+def test_head_requests_are_answered_like_get():
+    """curl -I, link checkers and uptime monitors use HEAD."""
+    client = _client()
+    for url in ("/", "/lessons/", "/lessons/lesson-1", "/_assets/app.css", "/_widgets/toast/widget.js"):
+        res = client.head(url)
+        assert res.status_code == 200, url
+        assert res.content == b"", url
+    assert client.head("/nope").status_code == 404
+    assert client.head("/lessons", follow_redirects=False).status_code == 308
