@@ -12,7 +12,7 @@ from urllib.parse import urljoin, urlsplit
 
 from .config import SiteConfig
 from .ordering import ORDER_FILENAME, read_order_file
-from .render import WIDGET_MACRO_RE, PageNotFound, WikiRenderer, frontmatter_problems, relpath_to_url
+from .render import WIDGET_MACRO_RE, PageNotFound, WikiRenderer, frontmatter_problems, read_page_text, relpath_to_url
 from .widgets import resolve_widget
 
 _HREF_RE = re.compile(r'<a\b[^>]*\bhref="([^"]*)"')
@@ -73,7 +73,14 @@ def validate(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[s
 
     # --- frontmatter + widget references --------------------------------------
     for md_path in _all_md_files(root):
-        text = md_path.read_text(encoding="utf-8")
+        try:
+            md_path.read_bytes().decode("utf-8")
+        except UnicodeDecodeError as exc:
+            issues.append(
+                f"{md_path.relative_to(root)}: not valid UTF-8 (byte {exc.start}); "
+                "the page shows replacement characters there"
+            )
+        text = read_page_text(md_path)
         for problem in frontmatter_problems(text):
             issues.append(f"{md_path.relative_to(root)}: {problem}")
         for m in WIDGET_MACRO_RE.finditer(text):

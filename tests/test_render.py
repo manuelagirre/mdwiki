@@ -221,3 +221,15 @@ def test_head_requests_are_answered_like_get():
         assert res.content == b"", url
     assert client.head("/nope").status_code == 404
     assert client.head("/lessons", follow_redirects=False).status_code == 308
+
+
+def test_non_utf8_page_renders_and_validate_reports_it(tmp_path):
+    (tmp_path / "index.md").write_text("# Home\n\n[c](cafe.md)\n", encoding="utf-8")
+    (tmp_path / "cafe.md").write_bytes("# Café notes\r\n\r\nnaïve\r\n".encode("latin-1"))
+    client = TestClient(create_app(content_dir=tmp_path))
+    res = client.get("/cafe")
+    assert res.status_code == 200
+    assert "Caf� notes" in res.text
+
+    issues = validate(tmp_path, SiteConfig(), None)
+    assert issues == ["cafe.md: not valid UTF-8 (byte 5); the page shows replacement characters there"]
