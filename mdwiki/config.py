@@ -13,7 +13,7 @@ import yaml
 VALID_ANCHORS = ("top", "bottom", "both")
 
 
-KNOWN_KEYS = ("title", "index", "nav", "theme", "backend_base", "widgets")
+KNOWN_KEYS = ("title", "index", "nav", "theme", "stylesheet", "backend_base", "widgets")
 
 
 class ConfigError(ValueError):
@@ -62,6 +62,11 @@ class SiteConfig:
     title: str = "Wiki"
     nav: list[NavLink] = field(default_factory=list)
     theme_dir: Path | None = None
+    stylesheet: Path | None = None
+    """`stylesheet:` - a CSS file loaded after the theme's app.css, so its
+    rules override the default ones selector by selector (plain CSS
+    cascade). Resolved relative to the config file, like `theme:`. None
+    when unset or when the file doesn't exist (a warning says so)."""
     backend_base: str = ""
     widget_hooks: list[WidgetHook] = field(default_factory=list)
     index_page: str | None = None
@@ -110,10 +115,18 @@ class SiteConfig:
                 raise ConfigError(f"{path.name}: widgets[{i}]: {exc}") from None
         theme = raw.get("theme")
         theme_dir = (path.parent / theme).resolve() if theme else None
+        stylesheet = raw.get("stylesheet")
+        if stylesheet is not None and not isinstance(stylesheet, str):
+            raise ConfigError(f"{path.name}: stylesheet must be a path to a .css file")
+        stylesheet_path = (path.parent / stylesheet).resolve() if stylesheet else None
+        if stylesheet_path is not None and not stylesheet_path.is_file():
+            warnings.append(f"{path.name}: stylesheet {stylesheet!r} does not exist; ignored")
+            stylesheet_path = None
         return cls(
             title=str(raw.get("title", "Wiki")),
             nav=nav,
             theme_dir=theme_dir,
+            stylesheet=stylesheet_path,
             backend_base=raw.get("backend_base", "") or "",
             widget_hooks=hooks,
             index_page=raw.get("index"),

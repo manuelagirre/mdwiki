@@ -81,6 +81,7 @@ nav:
   - label: Lessons
     href: /lessons/
 theme: ./my-theme        # optional - a directory with its own page.html/app.css
+stylesheet: ./wiki.css   # optional - CSS loaded after the default app.css, see below
 backend_base: "http://localhost:8001"   # optional, see "Backend calls" below
 widgets:                  # optional - auto-injected ("hook") widgets
   - name: next-button
@@ -88,7 +89,7 @@ widgets:                  # optional - auto-injected ("hook") widgets
     selector: "lessons/*"
 ```
 
-`nav`/`title`/`theme`/`backend_base`/`index` are all optional; an absent
+`nav`/`title`/`theme`/`stylesheet`/`backend_base`/`index` are all optional; an absent
 `mdwiki.yml` just gets you the default theme with no nav links, and `/`
 requires a literal `index.md` at the content root.
 
@@ -97,6 +98,23 @@ at `/` - useful when the homepage has a more descriptive name (e.g. a
 generated `Project-Overview.md`). Tried before the plain `index.md` fallback;
 if the named file is missing, resolution falls back to `index.md` exactly as
 if `index` had never been set.
+
+**`stylesheet`** adds your own CSS on top of the theme's `app.css`, without
+copying it. The page loads `app.css` first and your file second, so the
+normal CSS cascade applies: where your file has a rule for the same
+selector, your declarations win (property by property - `body { color: red }`
+changes only the colour and keeps the default font and margins); everything
+you don't mention keeps the default style. Copy the selector exactly as it
+appears in the default `app.css` - a less specific selector (`a` instead of
+`.site-nav a`) loses to the default one. Variants count too: overriding
+`.site-nav a` recolours the nav links, but the current page's link keeps
+the default colour until you also override `.site-nav a.active`. The path is relative to
+`mdwiki.yml`, so the file can live anywhere in the repo; it is served at
+`/_assets/stylesheet-override.css`. A path that doesn't exist is a warning
+at startup and in `mdwiki validate`, and the page then links no extra
+stylesheet. A custom `theme:` `page.html` gets the URL as
+`{{ stylesheet_override }}` (unset when there is none) to link it the same
+way.
 
 **A note on `top`/`bottom`/`both`:** these are anchors *inside the content
 region* - immediately before/after the rendered markdown, not the page shell

@@ -40,6 +40,10 @@ def _contained_file(base: Path, rel: str) -> Path | None:
     return None
 
 
+STYLESHEET_OVERRIDE_URL = "/_assets/stylesheet-override.css"
+"""Where `stylesheet:` from mdwiki.yml is served - linked after app.css."""
+
+
 def create_app(
     content_dir: Path,
     config_path: Path | None = None,
@@ -62,6 +66,10 @@ def create_app(
 
     @app.api_route("/_assets/{asset_path:path}", methods=["GET", "HEAD"])
     async def _assets(asset_path: str):
+        if config.stylesheet is not None and "/_assets/" + asset_path == STYLESHEET_OVERRIDE_URL:
+            if config.stylesheet.is_file():
+                return FileResponse(config.stylesheet, media_type="text/css")
+            raise HTTPException(status_code=404, detail="asset not found")
         for base in (theme_dir, STATIC_DIR):
             found = _contained_file(base, asset_path)
             if found is not None:
@@ -95,6 +103,7 @@ def create_app(
                 "backend_base": config.backend_base,
                 "has_mermaid": page.has_mermaid,
                 "request_path": request.url.path,
+                "stylesheet_override": STYLESHEET_OVERRIDE_URL if config.stylesheet is not None else None,
             },
         )
 

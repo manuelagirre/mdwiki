@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ title }} · {{ site_title }}</title>
   <link rel="stylesheet" href="/_assets/app.css">
+  {% if stylesheet_override %}
+  <link rel="stylesheet" href="{{ stylesheet_override }}">
+  {% endif %}
   {% if backend_base %}
   <script>window.MDWIKI_BACKEND_BASE = {{ backend_base|tojson }};</script>
   {% endif %}
