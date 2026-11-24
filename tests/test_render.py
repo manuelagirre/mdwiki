@@ -182,3 +182,31 @@ def test_canonical_non_ascii_page_url_is_not_redirected(tmp_path):
     res = client.get("/caf%C3%A9/", follow_redirects=False)
     assert res.status_code == 308
     assert res.headers["location"] == "/caf%C3%A9"
+
+
+def test_malformed_frontmatter_renders_the_page_and_is_reported(tmp_path):
+    bad = {
+        "bad-yaml.md": "---\ntitle: [unclosed\n---\n# Bad YAML\n",
+        "not-mapping.md": "---\n- a\n- b\n---\n# Not Mapping\n",
+        "widgets-list.md": "---\nwidgets: [next-button]\n---\n# Widgets List\n",
+        "backlink-str.md": "---\nback_link: /home\n---\n# Backlink Str\n",
+    }
+    for name, text in bad.items():
+        (tmp_path / name).write_text(text, encoding="utf-8")
+    renderer = WikiRenderer(tmp_path, SiteConfig(), None)
+    for name in bad:
+        page = renderer.render_relpath(name)  # must not raise
+        assert page.back_link is None
+        assert "<h1" in page.content_html, name
+
+    issues = validate(tmp_path, SiteConfig(), None)
+    for name in bad:
+        assert any(i.startswith(f"{name}: frontmatter") for i in issues), (name, issues)
+
+
+def test_wellformed_frontmatter_is_not_reported(tmp_path):
+    (tmp_path / "index.md").write_text(
+        "---\ntitle: T\nback_link: {href: /, label: Home}\nwidgets: {exclude: [x]}\n---\n# T\n",
+        encoding="utf-8",
+    )
+    assert validate(tmp_path, SiteConfig(), None) == []

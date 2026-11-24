@@ -192,7 +192,9 @@ Reports, in one sweep: every `_order.yml` entry that doesn't resolve on
 disk; every file/dir present but unlisted in its directory's manifest (a
 heads-up, not an error - it'll append alphabetically until positioned);
 every `{{ widget: name }}` macro and hook `name` that doesn't resolve under
-`./widgets/` or the standard set; every internal `<a href>` (post-rewrite,
+`./widgets/` or the standard set; every page whose frontmatter is invalid
+YAML or has a field of the wrong shape (the live server ignores such a
+field rather than failing the page); every internal `<a href>` (post-rewrite,
 see "Cross-links between pages") that doesn't resolve to a real page; every
 `#fragment` link whose target page has no matching `id=`. The link/anchor
 checks render every page through the same `WikiRenderer` the live server

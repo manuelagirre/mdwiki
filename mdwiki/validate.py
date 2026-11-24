@@ -12,7 +12,7 @@ from urllib.parse import urljoin, urlsplit
 
 from .config import SiteConfig
 from .ordering import ORDER_FILENAME, read_order_file
-from .render import WIDGET_MACRO_RE, PageNotFound, WikiRenderer, relpath_to_url
+from .render import WIDGET_MACRO_RE, PageNotFound, WikiRenderer, frontmatter_problems, relpath_to_url
 from .widgets import resolve_widget
 
 _HREF_RE = re.compile(r'<a\b[^>]*\bhref="([^"]*)"')
@@ -71,9 +71,11 @@ def validate(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[s
                 "(will append alphabetically until positioned)"
             )
 
-    # --- widget references ---------------------------------------------------
+    # --- frontmatter + widget references --------------------------------------
     for md_path in _all_md_files(root):
         text = md_path.read_text(encoding="utf-8")
+        for problem in frontmatter_problems(text):
+            issues.append(f"{md_path.relative_to(root)}: {problem}")
         for m in WIDGET_MACRO_RE.finditer(text):
             name = m.group(1)
             if resolve_widget(name, widgets_dir) is None:
