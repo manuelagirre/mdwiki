@@ -4,6 +4,7 @@ Items added by `/backlog-new-item`, not by `/wiki-init`.
 
 ## Items
 
+- [Fix Widget Placeholder Sentinel Collision](backlog-items/Fix-Widget-Placeholder-Sentinel-Collision.md) — page text spelling internal widget sentinel 500s or gets forged widget; per-render nonce sentinel
 
 ## Closed / superseded
 
