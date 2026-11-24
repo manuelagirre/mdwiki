@@ -4,6 +4,7 @@ Items added by `/backlog-new-item`, not by `/wiki-init`.
 
 ## Items
 
+- [Overlay Custom Page Template On Default Theme](backlog-items/Overlay-Custom-Page-Template-On-Default-Theme.md) — override page.html without copying the rest of the theme (per-file fallback, from 6685937); CSS side already done via stylesheet:
 - [Load Widgets Only From Repo Widgets Dir](backlog-items/Load-Widgets-Only-From-Repo-Widgets-Dir.md) — widgets_dir: in mdwiki.yml is only host widget source; drop --widgets (deprecate first) and env sources; repo override of built-in allowed, reported by validate
 - [Hide Gitignored And Configured Paths From Site](backlog-items/Hide-Gitignored-And-Configured-Paths-From-Site.md) — honour .gitignore with own matcher (git as test oracle); hide rules negotiable in mdwiki.yml except .git/ and mdwiki.yml; validate reports what is hidden
 - [Fix Widget Placeholder Sentinel Collision](backlog-items/Fix-Widget-Placeholder-Sentinel-Collision.md) — page text spelling internal widget sentinel 500s or gets forged widget; per-render nonce sentinel
