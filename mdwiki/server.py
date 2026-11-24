@@ -3,6 +3,7 @@ no in-process mounting into a host app (rejected for v1, see the extraction
 item's backlog page)."""
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from urllib.parse import quote
 
@@ -33,6 +34,8 @@ def create_app(
 ) -> FastAPI:
     content_dir = Path(content_dir).resolve()
     config = SiteConfig.load(config_path)
+    for warning in config.warnings:
+        print(f"mdwiki: warning: {warning}", file=sys.stderr)
     effective_widgets_dir = Path(widgets_dir).resolve() if widgets_dir else None
     theme_dir = config.theme_dir if config.theme_dir else DEFAULT_THEME_DIR
     renderer = WikiRenderer(content_dir, config, effective_widgets_dir)

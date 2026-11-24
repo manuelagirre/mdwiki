@@ -4,7 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from .config import SiteConfig
+from .config import ConfigError, SiteConfig
 from .ordering import append, insert_after, insert_before, remove
 from .server import serve
 from .validate import validate
@@ -88,4 +88,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
-    sys.exit(args.func(args))
+    try:
+        sys.exit(args.func(args))
+    except ConfigError as exc:
+        print(f"mdwiki: {exc}", file=sys.stderr)
+        sys.exit(2)
