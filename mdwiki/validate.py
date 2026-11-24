@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
 from .config import SiteConfig
-from .ordering import ORDER_FILENAME, read_order_file
+from .ordering import ORDER_FILENAME, order_file_problem, read_order_file
 from .render import WIDGET_MACRO_RE, PageNotFound, WikiRenderer, frontmatter_problems, read_page_text, relpath_to_url
 from .widgets import resolve_widget
 
@@ -54,11 +54,15 @@ def validate(root: Path, config: SiteConfig, widgets_dir: Path | None) -> list[s
         order_path = dir_path / ORDER_FILENAME
         if not order_path.is_file():
             continue
+        rel_dir = dir_path.relative_to(root)
+        problem = order_file_problem(dir_path)
+        if problem:
+            issues.append(f"{rel_dir / ORDER_FILENAME}: {problem}")
+            continue
         listed = read_order_file(dir_path)
         on_disk = {
             p.name for p in dir_path.iterdir() if p.is_dir() or (p.is_file() and p.suffix == ".md")
         }
-        rel_dir = dir_path.relative_to(root)
         for name in listed:
             if name not in on_disk:
                 issues.append(f"{rel_dir / ORDER_FILENAME}: entry {name!r} does not exist on disk")

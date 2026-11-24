@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from .config import ConfigError, SiteConfig
-from .ordering import append, insert_after, insert_before, remove
+from .ordering import OrderError, append, insert_after, insert_before, remove
 from .server import serve
 from .validate import validate
 
@@ -90,6 +90,6 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
     try:
         sys.exit(args.func(args))
-    except ConfigError as exc:
+    except (ConfigError, OrderError) as exc:
         print(f"mdwiki: {exc}", file=sys.stderr)
         sys.exit(2)
