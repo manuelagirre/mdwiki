@@ -94,3 +94,11 @@ def test_mermaid_fence_directly_under_a_paragraph_is_not_wrapped_in_p(tmp_path):
 def test_tilde_mermaid_fence_and_unterminated_fence(tmp_path):
     assert _render(tmp_path, "~~~mermaid\ngraph TD; A-->B\n~~~\n").has_mermaid is True
     assert _render(tmp_path, "```mermaid\nno closing fence\n").has_mermaid is False
+
+
+def test_line_starting_with_inline_code_is_not_a_fence_opener(tmp_path):
+    """```foo``` at the start of a paragraph is inline code; treating it as an
+    opener would swallow the mermaid fence below as its content."""
+    page = _render(tmp_path, "```foo``` is inline code\n\n```mermaid\ngraph TD; A-->B\n```\n")
+    assert page.has_mermaid is True
+    assert '<pre class="mermaid">' in page.content_html
