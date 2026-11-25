@@ -7,6 +7,7 @@
 | Step | Actor | Done | Date | Note |
 |---|---|---|---|---|
 | Created | — | ✓ | 2026-11-24 | From review discussion of commit `337cb78` (dot-path pages) on branch `agent/autonomous-run-2026-11-23` |
+| Scope note | — | ✓ | 2026-11-25 | Review commit `fc143d6` backported as `2dfdc55` without its dot-path rule; ordering's `.git`-only check is to be replaced here |
 
 ## Raw Idea
 
@@ -88,7 +89,7 @@ Out:
 | `SiteConfig` / `SiteConfig.load` | `mdwiki/config.py` | Parse `hide_dot_paths`, `use_gitignore`, `exclude`, `include`; type-check lists. |
 | `_all_md_files`, `_all_page_files`, `_order.yml` dir walk | `mdwiki/validate.py` | Skip hidden; collect hidden summary. |
 | `validate` report / CLI print | `mdwiki/validate.py`, `mdwiki/cli.py` | Print hidden summary lines, excluded from `--strict` count. |
-| `orderable_names`, tree walk | `mdwiki/ordering.py` | Skip hidden names. |
+| `orderable_names`, `_has_pages`, tree walk | `mdwiki/ordering.py` | Skip hidden names. Since `2dfdc55` (backport of review commit `fc143d6`) these skip only `.git` via the `_NEVER_PAGES` literal; replace it with the shared hide predicate. The review branch's version also skipped every dot-entry; that part was held back for this item. |
 | New: ignore matcher module | `mdwiki/ignore.py` (new) | Gitignore pattern parser and matcher, plus loader for nested `.gitignore` files. |
 | New: `tests/test_ignore.py` | `tests/` | Pattern unit tests plus `git check-ignore` oracle comparison. |
 
