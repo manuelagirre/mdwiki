@@ -25,7 +25,9 @@ from html import escape
 from markdown.extensions import Extension
 from markdown.preprocessors import Preprocessor
 
-_OPEN_RE = re.compile(r"^(?P<fence>`{3,}|~{3,})(?P<info>.*)$")
+# A backtick fence's info string can't contain a backtick (CommonMark, and
+# fenced_code agrees): "```foo``` text" is inline code, not an opener.
+_OPEN_RE = re.compile(r"^(?P<fence>`{3,}(?=[^`]*$)|~{3,})(?P<info>.*)$")
 _MERMAID_INFO_RE = re.compile(r"^ *mermaid *$")
 
 
