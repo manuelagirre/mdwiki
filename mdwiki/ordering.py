@@ -48,15 +48,44 @@ def read_order_file(dir_path: Path) -> list[str]:
 _read_order_file = read_order_file  # internal alias, kept for brevity below
 
 
-def ordered_entries(dir_path: Path) -> list[str]:
-    """Basenames of dir_path's children (files and subdirectories, `.md`
-    only for files), in the manifest's order, then unlisted entries appended
-    alphabetically. Stale manifest entries (no longer on disk) are skipped."""
-    on_disk = {
+# `.git/` is never part of the site (always hidden, no override). Other
+# dot-paths are still served today, so they stay orderable; hiding them is
+# the "Hide Gitignored And Configured Paths From Site" backlog item, which
+# replaces this check with the shared hide predicate.
+_NEVER_PAGES = frozenset({".git"})
+
+
+def _has_pages(dir_path: Path) -> bool:
+    """Whether a directory holds at least one `.md` page anywhere below it."""
+    for child in dir_path.iterdir():
+        if child.name in _NEVER_PAGES:
+            continue
+        if child.is_file() and child.suffix == ".md":
+            return True
+        if child.is_dir() and _has_pages(child):
+            return True
+    return False
+
+
+def orderable_names(dir_path: Path) -> set[str]:
+    """Basenames of dir_path's children that take part in page ordering:
+    `.md` files, and subdirectories that contain pages. Page-less
+    directories (an `images/` folder) and `.git/` are left out - they're
+    never pages, so they don't belong in a manifest or the next/prev
+    sequence."""
+    return {
         p.name
         for p in dir_path.iterdir()
-        if p.is_dir() or (p.is_file() and p.suffix == ".md")
+        if p.name not in _NEVER_PAGES
+        and ((p.is_file() and p.suffix == ".md") or (p.is_dir() and _has_pages(p)))
     }
+
+
+def ordered_entries(dir_path: Path) -> list[str]:
+    """Basenames of dir_path's orderable children (see `orderable_names`),
+    in the manifest's order, then unlisted entries appended alphabetically.
+    Stale manifest entries (no longer on disk) are skipped."""
+    on_disk = orderable_names(dir_path)
     explicit = [name for name in _read_order_file(dir_path) if name in on_disk]
     remaining = sorted(on_disk - set(explicit))
     return explicit + remaining

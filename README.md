@@ -167,6 +167,8 @@ optional - sibling to the `.md` files it orders:
 - wrap-up.md
 ```
 
+- Only pages take part: `.md` files and subdirectories that contain pages.
+  Page-less folders (`images/`) and `.git/` are ignored.
 - No `_order.yml` in a directory → plain alphabetical order. The common
   case (filenames that already sort correctly) needs zero setup.
 - Files/dirs on disk but missing from the manifest are appended after the

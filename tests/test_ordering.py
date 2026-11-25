@@ -2,7 +2,7 @@ import pytest
 
 from mdwiki.cli import main
 from mdwiki.config import SiteConfig
-from mdwiki.ordering import OrderError, append, ordered_entries
+from mdwiki.ordering import OrderError, append, ordered_entries, walk
 from mdwiki.validate import validate
 
 
@@ -41,3 +41,30 @@ def test_order_cli_prints_the_refusal_without_traceback(tmp_path, capsys):
         main(["order", "append", str(tmp_path), "c.md"])
     assert exit_info.value.code == 2
     assert "fix it by hand first" in capsys.readouterr().err
+
+
+def test_git_dir_and_pageless_dirs_are_not_ordered(tmp_path):
+    _touch(tmp_path, "a.md", "b.md", ".git/x.md", "images/logo.png", "deep/more/c.md")
+    assert ordered_entries(tmp_path) == ["a.md", "b.md", "deep"]
+    assert [p.relpath for p in walk(tmp_path)] == ["a.md", "b.md", "deep/more/c.md"]
+
+
+def test_other_dot_dirs_stay_ordered_until_the_hide_rules_land(tmp_path):
+    """Dot-paths other than .git are still served, so they stay in the
+    order too; hiding them is the "Hide Gitignored And Configured Paths
+    From Site" backlog item, which will route this through one predicate."""
+    _touch(tmp_path, "a.md", ".drafts/x.md")
+    assert ordered_entries(tmp_path) == [".drafts", "a.md"]
+
+
+def test_validate_ignores_asset_dirs_but_flags_them_if_listed(tmp_path):
+    _touch(tmp_path, "a.md", "images/logo.png", ".git/HEAD")
+    (tmp_path / "_order.yml").write_text("- a.md\n", encoding="utf-8")
+    assert validate(tmp_path, SiteConfig(), None) == []  # no "images is unlisted" noise
+
+    (tmp_path / "_order.yml").write_text("- a.md\n- images\n", encoding="utf-8")
+    issues = validate(tmp_path, SiteConfig(), None)
+    assert issues == ["_order.yml: entry 'images' is not a page or a directory of pages"]
+
+    (tmp_path / "_order.yml").write_text("- a.md\n- gone.md\n", encoding="utf-8")
+    assert validate(tmp_path, SiteConfig(), None) == ["_order.yml: entry 'gone.md' does not exist on disk"]
